@@ -1,0 +1,27 @@
+# Ignore guide folder and CLAUDE.md
+guide/
+CLAUDE.md
+
+# Laravel
+backend/.env
+backend/.env.local
+backend/vendor/
+backend/node_modules/
+backend/storage/logs/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/storage/app/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
