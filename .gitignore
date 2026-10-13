@@ -1,22 +1,29 @@
-# Ignore guide folder and CLAUDE.md
-guide/
-CLAUDE.md
+# Laravel (app lives at repo root)
+.env
+.env.*
+!.env.example
+/auth.json
+/vendor/
+/node_modules/
+/public/hot
+/public/build
+/public/storage
+/storage/*.key
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/app/
+/bootstrap/cache/*.php
 
-# Laravel
-backend/.env
-backend/.env.local
-backend/vendor/
-backend/node_modules/
-backend/storage/logs/
-backend/storage/framework/cache/
-backend/storage/framework/sessions/
-backend/storage/framework/views/
-backend/storage/app/
+# Passport keys
+/storage/oauth-*.key
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.env.local
+# Local test and browser artifacts
+/.phpunit.cache/
+/.phpunit.result.cache
+/.pest.cache/
+/.playwright-mcp/
 
 # IDE
 .vscode/
