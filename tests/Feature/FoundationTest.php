@@ -11,7 +11,8 @@ it('serves the Aether welcome page with compiled assets', function (): void {
         ->assertOk()
         ->assertSee('AETHER')
         ->assertSee('One identity, every application.')
-        ->assertSee('Account registration and sign-in will be available soon.')
+        ->assertSee('Create an account')
+        ->assertSee('Sign in')
         ->assertDontSee('tailwind');
 });
 

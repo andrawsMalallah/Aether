@@ -1,6 +1,6 @@
 # Aether
 
-An SSO identity provider built with Laravel 13. This foundation includes a placeholder welcome page and quality tooling; authentication and OAuth are subsequent roadmap steps.
+An SSO identity provider built with Laravel 13. The account core includes registration, Fortify login/logout, email verification, password reset, profile photos, password changes, and verified email changes. OAuth and two-factor authentication are subsequent roadmap phases.
 
 ## Requirements
 
@@ -23,9 +23,36 @@ npm run build
 
 ## Local application setup
 
-Review `.env.example` before creating `.env`. The template uses `aether.test`, the `aether` MySQL database, database sessions and queues, UTC, and local Mailpit on port 1025. Create the local database and generate the application key only after approving local configuration. Point Herd at this directory as `aether.test`; serve its `public` directory.
+Review `.env.example` before creating `.env`. The template uses `aether.test`, the `aether` MySQL database, database sessions and queues, UTC, Argon2id, and local Mailpit on port 1025. Configure database credentials privately in `.env`; never paste them into chat or commit them. Create the local database and generate the application key only after approving local configuration. Point Herd at this directory as `aether.test`; serve its `public` directory.
 
 Once local setup is complete, open `http://aether.test` to check the welcome page. `npm run dev` starts the asset development server; `npm run build` produces assets for deployment.
+
+After confirming the database is a local development database, run normal `php artisan migrate`. Do not use `migrate:fresh` or `db:wipe`. Start Mailpit, then run `php artisan queue:work` so verification and reset emails are delivered. Queue workers must be restarted after application code or configuration changes.
+
+## Account behavior
+
+- Registration keeps the browser signed out and returns the same message for new and existing addresses. New accounts receive a queued verification email; sign in with the newly chosen password to continue.
+- Accounts must verify their email before accessing `/account/profile`.
+- Forgot-password responses are identical for known and unknown addresses. Reset tokens are managed by Laravel's password broker and cannot be reused.
+- Profile photos are validated, stored under generated names on the private local disk, and served only to their owner.
+- Password changes require the current password, revoke other database sessions and remember-me credentials, and cancel pending email changes. Password resets revoke all database sessions.
+- Email changes require the current password. The original address remains active until the new address is confirmed using a signed, expiring link while signed in as the account owner. Both addresses receive queued notifications.
+- Auth pages load fonts and other assets from this application. Password validation contacts Have I Been Pwned using Laravel's k-anonymity verifier; tests fake those responses and block unexpected HTTP calls.
+- Terms and privacy pages are clearly marked draft placeholders and need real text before launch.
+
+## Manual verification
+
+On desktop and a 320px-wide mobile viewport:
+
+1. Open `/register`, create an account, and inspect the verification mail in Mailpit. Sign in, open the link, and confirm access to `/account/profile`.
+2. Sign out, then test `/login` with an incorrect password and with remember-me enabled.
+3. Use `/forgot-password`, open the mail link, reset the password, and confirm that the same link cannot reset it again.
+4. On `/account/profile`, update the name, upload a JPEG/PNG/WebP photo, and check rejection of oversized images or SVG files.
+5. Change the password using the current password; confirm another browser session is signed out.
+6. Request an email change. Confirm the old address remains active before confirmation, then follow the new address's link while signed in. Confirm the old address receives a notice.
+7. Use keyboard navigation to check labels and focus rings; confirm all forms fit the mobile viewport.
+
+Automated checks are isolated. Live MySQL, Mailpit, and GitHub Actions verification must also pass before marking Phase 1 complete.
 
 ## Quality commands
 
