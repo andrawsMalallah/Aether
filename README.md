@@ -1,6 +1,6 @@
 # Aether
 
-An SSO identity provider built with Laravel 13. The account core includes registration, Fortify login/logout, email verification, password reset, profile photos, password changes, and verified email changes. OAuth and two-factor authentication are subsequent roadmap phases.
+An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2. OpenID Connect identity tokens/discovery are planned for Phase 4; OAuth2 alone is not yet a complete standard "Sign in with Aether" integration.
 
 ## Requirements
 
@@ -63,6 +63,24 @@ On desktop and a 320px mobile viewport, verify setup and cancellation, sign-out/
 Fortify encrypts the secret and recovery codes with `APP_KEY`. Do not rotate that key without a planned re-encryption process. The security page sends `Cache-Control: no-store` and one-time credentials are excluded from flashed form input.
 
 The application's Fortify provider adapter records the actual accepted TOTP time step using an atomic cache claim, preserving clock tolerance while preventing reuse. Replay protection requires a shared persistent cache (the local default is database); clearing or evicting live claims removes that protection until those codes expire.
+
+## OAuth2
+
+Passport 13.9 uses UUID clients, polymorphic owners, `redirect_uris`, and `grant_types`. Aether extends its client model with explicit trust, lifecycle, app type, and allowed scopes. Secret hashing is built into Passport; `plainSecret` is available only on the instance that created/regenerated it and is never stored as plaintext. No HTTP client-management or personal-access-token endpoints are exposed.
+
+After confirming the configured database is local, run normal `php artisan migrate`, then `php artisan passport:keys` once. The default is 4096-bit RSA; never force-overwrite an existing pair. Keys are ignored under `storage/`. Production uses `PASSPORT_PRIVATE_KEY` / `PASSPORT_PUBLIC_KEY` from its secret store; no `.env` change is needed for the local file-based defaults.
+
+`php artisan db:seed --class=OAuthTestClientSeeder` creates one public local walkthrough client with exactly `http://localhost:8765/callback`. It is local-only, idempotent, live, and third-party (consent required). It creates no user and prints no secret. Do not run the fixture seeder in production.
+
+Interactive clients require authorization code + PKCE S256, including confidential web clients. Redirects match registered strings exactly, including loopback ports. SPA/mobile clients are public; web/M2M clients are confidential. Only live confidential M2M clients can use client credentials. Testing clients allow only their verified owner; suspended/revoked clients cannot authorize, exchange, refresh, or use existing access tokens.
+
+Authorization codes last one minute; access tokens last one hour; refresh tokens last 30 days and rotate. Database transactions and row locks serialize code/refresh consumption. Code replay revokes all access/refresh tokens in its lineage, including refreshed tokens. Minimal database audit records (`code.replayed`, `refresh.replayed`, `consent.granted`, `token.revoked`) contain event/client/user IDs, never raw credentials. The wider audit catalog is a later phase.
+
+Consent persists independently of token expiry, unions approved scopes, and re-prompts for expansion or revoked grants. The explicit `first_party` flag skips consent; ownerless clients do not automatically become trusted. `prompt=consent` forces a prompt. Consent submissions bind to the signed-in user and recheck current restrictions.
+
+`POST /oauth/token` and `POST /oauth/revoke` are stateless back-channel protocol routes. Browser consent remains protected by web session/CSRF middleware. Confidential clients authenticate with Basic **or** body credentials, never both. Revocation accepts either token type, checks client ownership, revokes the associated access/refresh pair, and returns an empty 200 for unknown tokens. Introspection is deferred.
+
+See [scripts/oauth-walkthrough.md](scripts/oauth-walkthrough.md) for the complete manual flow. Check consent, Allow/Deny, return visits, expanded scopes, and keyboard focus on desktop and a 320px mobile viewport. OAuth tests generate ephemeral signing keys and never use local provider keys. Run `composer check`, `composer audit`, and `npm run build`; hosted CI remains a separate publication gate.
 
 ## Quality commands
 

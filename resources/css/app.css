@@ -101,6 +101,10 @@ h2 { font-size: 19px; }
 .recovery-codes code, .setup-key code { font-family: ui-monospace, monospace; }
 .recovery-option, .security-disable { margin-top: 24px; }
 .recovery-option summary { cursor: pointer; margin-bottom: 18px; }
+.consent-scopes { padding-left: 20px; margin-bottom: 28px; color: var(--text-secondary); font-size: 13px; line-height: 1.75; }
+.consent-deny { margin-top: 12px; }
+.consent-logo { display: block; object-fit: contain; margin: 0 auto 20px; border-radius: 6px; }
+.auth-card h1, .auth-card h2 { overflow-wrap: anywhere; }
 @media (max-width: 639px) {
     .auth-card { padding: 32px 24px; }
     .site-header { padding: 24px; }

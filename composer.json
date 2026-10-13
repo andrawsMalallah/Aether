@@ -9,6 +9,7 @@
         "php": "^8.3",
         "laravel/fortify": "^1.41",
         "laravel/framework": "^13.17",
+        "laravel/passport": "^13.0",
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
