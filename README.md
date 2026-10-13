@@ -54,6 +54,16 @@ On desktop and a 320px-wide mobile viewport:
 
 Automated checks are isolated. Live MySQL, Mailpit, and GitHub Actions verification must also pass before marking Phase 1 complete.
 
+## Two-factor authentication
+
+Open `/account/security` after verifying your email. Confirm your password (valid for five minutes), start setup, scan the QR code or enter the manual setup key in your authenticator app, and confirm a six-digit code. Setup is inactive until confirmation. Save the recovery codes shown after confirmation; they are not shown on subsequent visits. Generating replacements invalidates all previous codes.
+
+On desktop and a 320px mobile viewport, verify setup and cancellation, sign-out/sign-in with TOTP, sign-in with a recovery code followed by rejection of its reuse, recovery-code regeneration, and disabling 2FA. Check that an incorrect code leaves you signed out, the sixth challenge attempt within a minute is blocked, and settings require password confirmation again after five minutes. Verify keyboard focus and that the QR code, setup key, and recovery codes fit the screen. A code just used to confirm setup cannot immediately be reused for login; wait for the next authenticator code.
+
+Fortify encrypts the secret and recovery codes with `APP_KEY`. Do not rotate that key without a planned re-encryption process. The security page sends `Cache-Control: no-store` and one-time credentials are excluded from flashed form input.
+
+The application's Fortify provider adapter records the actual accepted TOTP time step using an atomic cache claim, preserving clock tolerance while preventing reuse. Replay protection requires a shared persistent cache (the local default is database); clearing or evicting live claims removes that protection until those codes expire.
+
 ## Quality commands
 
 - `composer test`: Pest feature and unit tests.

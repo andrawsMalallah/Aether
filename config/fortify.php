@@ -15,5 +15,5 @@ return [
     'auth_middleware' => 'auth',
     'views' => true,
     'limiters' => ['login' => 'login', 'verification' => 'verification'],
-    'features' => [Features::emailVerification()],
+    'features' => [Features::emailVerification(), Features::twoFactorAuthentication(['confirm' => true, 'confirmPassword' => true])],
 ];

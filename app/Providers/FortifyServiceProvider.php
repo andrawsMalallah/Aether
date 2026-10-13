@@ -2,19 +2,33 @@
 
 namespace App\Providers;
 
+use App\Services\Authentication\TwoFactorAuthenticationProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider as TwoFactorProviderContract;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->app->singleton(TwoFactorProviderContract::class, TwoFactorAuthenticationProvider::class);
+    }
+
     public function boot(): void
     {
         Fortify::loginView(fn (): View => view('auth.login'));
         Fortify::verifyEmailView(fn (): View => view('auth.verify-email'));
+        Fortify::twoFactorChallengeView(fn (): View => view('auth.two-factor-challenge'));
+        RateLimiter::for('two-factor', fn (Request $request): array => [
+            Limit::perMinute(5)->by('two-factor:user:'.(string) $request->session()->get('login.id', 'guest')),
+            Limit::perMinute(30)->by('two-factor:ip:'.$request->ip()),
+        ]);
+        RateLimiter::for('password-confirmation', fn (Request $request): Limit => Limit::perMinute(5)->by('password-confirmation:'.$request->user()?->getAuthIdentifier()));
+        RateLimiter::for('two-factor-settings', fn (Request $request): Limit => Limit::perMinute(5)->by('two-factor-settings:'.$request->user()?->getAuthIdentifier()));
         RateLimiter::for('login', function (Request $request): array {
             $email = is_string($request->input('email')) ? strtolower($request->input('email')) : '';
 

@@ -94,6 +94,13 @@ h2 { font-size: 19px; }
 .page-description { color: var(--text-secondary); font-size: 14px; line-height: 1.75; }
 .settings-section { border-top: 0.5px solid var(--border); margin-top: 32px; padding-top: 24px; }
 .avatar { border-radius: 6px; object-fit: cover; margin-bottom: 18px; }
+.two-factor-qr { width: 216px; max-width: 100%; padding: 12px; background: white; margin: 20px 0; }
+.two-factor-qr svg { display: block; width: 100%; height: auto; }
+.setup-key { overflow-wrap: anywhere; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; padding: 0; list-style: none; }
+.recovery-codes code, .setup-key code { font-family: ui-monospace, monospace; }
+.recovery-option, .security-disable { margin-top: 24px; }
+.recovery-option summary { cursor: pointer; margin-bottom: 18px; }
 @media (max-width: 639px) {
     .auth-card { padding: 32px 24px; }
     .site-header { padding: 24px; }
