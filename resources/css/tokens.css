@@ -1,0 +1,69 @@
+:root {
+  /* neutrals */
+  --page: #F5F3EE;            /* page canvas, warm off-white */
+  --surface: #FFFDF9;         /* cards, sidebars, elevated bands */
+  --surface-input: #FFFFFF;   /* form field interiors */
+  --border: #DCD7CC;          /* default hairline */
+  --border-strong: #C9C3B6;   /* container edges, emphasis */
+  --divider-light: #E3DFD6;   /* table rows, list separators */
+  --text-primary: #1B2A41;    /* headings, body, values */
+  --text-secondary: #4A4740;  /* supporting copy, nav items */
+  --text-muted: #6B6559;      /* labels, captions */
+  --text-subtle: #8A857B;     /* metadata, timestamps */
+  --solid: #1B2A41;           /* primary button fill (same navy as text-primary — intentional) */
+  --on-solid: #FFFDF9;        /* text on primary button */
+  --chart-neutral: #4A5A72;   /* chart bars, non-highlighted series */
+
+  /* accent (gold) — wayfinding only, never failure states or body text */
+  --accent: #8A6A22;
+  --accent-tint: #F5EEDC;
+  --accent-tint-text: #6B5119;
+  --accent-border: #D6C08A;
+
+  /* danger — failed auth, revoked access, destructive confirmation */
+  --danger-text: #8B2C2C;
+  --danger-solid: #8B2C2C;
+  --danger-tint: #F7E9E7;
+  --danger-tint-text: #6E2323;
+  --danger-border: #DFB0AC;
+
+  /* success — verified identity, healthy service, completed provisioning */
+  --success-text: #3D6B4A;
+  --success-solid: #3D6B4A;
+  --success-tint: #E7F0E9;
+  --success-tint-text: #2E5238;
+  --success-border: #A8C6B0;
+}
+
+[data-mode="dark"] {
+  --page: #0E1520;
+  --surface: #16202E;
+  --surface-input: #0E1520;   /* darker than surface: recessed = input, raised = card */
+  --border: #2E3B4D;
+  --border-strong: #4A5A70;
+  --divider-light: #232F40;
+  --text-primary: #EDF1F6;
+  --text-secondary: #C9D2DE;
+  --text-muted: #8794A6;
+  --text-subtle: #66738A;
+  --solid: #EDF1F6;           /* primary button inverts: near-white fill, navy text */
+  --on-solid: #0E1520;
+  --chart-neutral: #5C7292;
+
+  --accent: #C9A24A;
+  --accent-tint: #332A16;
+  --accent-tint-text: #E8D5A4;
+  --accent-border: #6B5A2C;
+
+  --danger-text: #D97070;     /* text and solid diverge in dark mode by design */
+  --danger-solid: #B33F3F;
+  --danger-tint: #3A1E1E;
+  --danger-tint-text: #F2C4C4;
+  --danger-border: #6E3535;
+
+  --success-text: #7FB894;
+  --success-solid: #3D7A52;
+  --success-tint: #1C3226;
+  --success-tint-text: #C8E3D2;
+  --success-border: #3F6349;
+}
