@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Application;
@@ -10,6 +11,17 @@ use Illuminate\Support\Facades\Http;
 
 abstract class TestCase extends BaseTestCase
 {
+    public function actingAs(Authenticatable $user, $guard = null): static
+    {
+        parent::actingAs($user, $guard);
+        if ($guard === null || $guard === 'web') {
+            // actingAs bypasses Login events; simulate the session context a real login records.
+            $this->withSession(['oidc' => ['auth_time' => now()->timestamp, 'user_id' => (string) $user->getAuthIdentifier()]]);
+        }
+
+        return $this;
+    }
+
     public function createApplication(): Application
     {
         $application = require dirname(__DIR__).'/bootstrap/app.php';

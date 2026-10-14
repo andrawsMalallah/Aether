@@ -6,10 +6,13 @@ use App\Http\Controllers\OAuth\AuthorizationController;
 use App\Models\OAuthClient;
 use App\Services\OAuth;
 use DateInterval;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Bridge;
@@ -26,6 +29,7 @@ class OAuthServiceProvider extends ServiceProvider
         Passport::$deviceCodeGrantEnabled = false;
         Passport::$passwordGrantEnabled = false;
         Passport::$implicitGrantEnabled = false;
+        Passport::useAuthorizationServerResponseType(new OAuth\OidcTokenResponse);
         $this->app->scoped(OAuth\TokenContext::class);
         $this->app->singleton(ClientRepository::class, OAuth\ClientRepository::class);
         $this->app->bind(Bridge\ClientRepository::class, OAuth\BridgeClientRepository::class);
@@ -46,6 +50,21 @@ class OAuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->guard === 'web' && request()->hasSession()) {
+                request()->session()->put('oidc', ['auth_time' => now()->timestamp, 'user_id' => (string) $event->user->getAuthIdentifier()]);
+            }
+        });
+        Event::listen(Logout::class, function (Logout $event): void {
+            if ($event->guard === 'web' && request()->hasSession()) {
+                request()->session()->forget('oidc');
+            }
+        });
+        RateLimiter::for('oidc-userinfo', fn (Request $request): array => [
+            // A fingerprint identifies the rate bucket without retaining the bearer credential.
+            Limit::perMinute(120)->by('oidc-userinfo:token:'.hash('sha256', $request->bearerToken() ?? 'guest:'.$request->ip())),
+            Limit::perMinute(240)->by('oidc-userinfo:ip:'.$request->ip()),
+        ]);
         Passport::useClientModel(OAuthClient::class);
         Passport::authorizationView('oauth.consent');
         Passport::tokensCan(config('oauth.scopes'));

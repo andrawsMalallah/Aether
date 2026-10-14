@@ -1,6 +1,6 @@
 # Aether
 
-An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2. OpenID Connect identity tokens/discovery are planned for Phase 4; OAuth2 alone is not yet a complete standard "Sign in with Aether" integration.
+An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2 with an OpenID Connect identity layer. Discovery, JWKS, scope-filtered userinfo, and standard signed ID tokens support basic "Sign in with Aether" integration. Production hardening and real demo apps remain later phases.
 
 ## Requirements
 
@@ -81,6 +81,20 @@ Consent persists independently of token expiry, unions approved scopes, and re-p
 `POST /oauth/token` and `POST /oauth/revoke` are stateless back-channel protocol routes. Browser consent remains protected by web session/CSRF middleware. Confidential clients authenticate with Basic **or** body credentials, never both. Revocation accepts either token type, checks client ownership, revokes the associated access/refresh pair, and returns an empty 200 for unknown tokens. Introspection is deferred.
 
 See [scripts/oauth-walkthrough.md](scripts/oauth-walkthrough.md) for the complete manual flow. Check consent, Allow/Deny, return visits, expanded scopes, and keyboard focus on desktop and a 320px mobile viewport. OAuth tests generate ephemeral signing keys and never use local provider keys. Run `composer check`, `composer audit`, and `npm run build`; hosted CI remains a separate publication gate.
+
+## OpenID Connect
+
+Discovery is at `/.well-known/openid-configuration`; public signing keys are at `/.well-known/jwks.json`. The issuer comes from `config/oidc.php` (canonical `APP_URL`), never the request Host header. HTTP is allowed only in local/testing; production requires HTTPS. ID tokens use standard RS256 through the existing JWT library and Passport's RSA keys, with a stable public-key thumbprint as `kid`.
+
+User grants requesting `openid` receive a one-hour ID token. `sub`, issuer/audience/timestamps, and original login `auth_time` are included. The authorization request's optional `nonce` is bound to the stored code and cannot be replaced at consent or exchange. Refresh keeps the original authentication time and nonce; reduced scopes reduce identity claims. Context is copied onto access-token records so expired-code cleanup does not break refresh. Machine grants and grants without `openid` do not receive identity tokens.
+
+`GET` and `POST /oauth/userinfo` accept an Authorization Bearer header, not browser login cookies. They require a valid user access token with `openid`, enforce current client/account restrictions, and return only scope-granted claims: `name` for `profile`, `email`/`email_verified` for `email`. Private avatars do not currently have a client-readable URL, so the optional `picture` claim is omitted. Invalid/expired/revoked credentials return 401; a valid credential without the required identity scope returns 403. Identity responses are not cacheable.
+
+Existing sessions without recorded login time must sign in again for OIDC. Pre-upgrade codes/refresh credentials with `openid` but no authentication context are rejected safely; clients must restart sign-in. The OIDC migration adds nullable context fields to authorization codes and access tokens. Apply it with normal `php artisan migrate` against a confirmed local database before testing.
+
+Discovery advertises only authorization-code responses, query response mode, S256, RS256, public subjects, and supported claims. Request objects, request URIs, the claims parameter, `max_age`, `id_token_hint`, and `acr_values` are explicitly unsupported and rejected. Full conformance certification, multiple simultaneous public keys/key rotation, and logout protocols remain later work. `config/cors.php` starts with no allowed origins; opt in to exact approved browser-client origins in Phase 5. It covers only protocol/data endpoints and never permits credentialed browser cookies.
+
+See [scripts/oidc-walkthrough.md](scripts/oidc-walkthrough.md) for manual checks. Phase 4 interoperability was exercised with an isolated `openid-client` 6.8.8 relying party using discovery only; that temporary tool is not an Aether dependency.
 
 ## Quality commands
 

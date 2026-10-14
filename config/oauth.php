@@ -3,7 +3,7 @@
 return [
     'scopes' => [
         'openid' => 'Sign you in',
-        'profile' => 'See your name and profile picture',
+        'profile' => 'See your name',
         'email' => 'See your email address',
     ],
 ];

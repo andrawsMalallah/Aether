@@ -15,6 +15,11 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class AuthorizationCodeGrant extends AuthCodeGrant
 {
+    protected function createAuthorizationRequest(): AuthorizationRequestInterface
+    {
+        return new OidcAuthorizationRequest;
+    }
+
     public function validateAuthorizationRequest(ServerRequestInterface $request): AuthorizationRequestInterface
     {
         $parameters = $request->getQueryParams();
@@ -29,6 +34,9 @@ class AuthorizationCodeGrant extends AuthCodeGrant
             throw OAuthServerException::invalidRequest('redirect_uri');
         }
         $authorization = parent::validateAuthorizationRequest($request);
+        if ($authorization instanceof OidcAuthorizationRequest) {
+            $authorization->nonce = $parameters['nonce'] ?? null;
+        }
         $client = OAuthClient::query()->find($authorization->getClient()->getIdentifier());
         foreach ($authorization->getScopes() as $scope) {
             if (! $client?->hasScope($scope->getIdentifier()) || ! array_key_exists($scope->getIdentifier(), config('oauth.scopes'))) {
@@ -67,6 +75,13 @@ class AuthorizationCodeGrant extends AuthCodeGrant
             }
         }
 
-        return parent::completeAuthorizationRequest($authorizationRequest);
+        // Serialized authorization context survives login/consent, including automatic approval.
+        $context = app(TokenContext::class);
+        $context->authorization = $authorizationRequest instanceof OidcAuthorizationRequest ? $authorizationRequest : null;
+        try {
+            return parent::completeAuthorizationRequest($authorizationRequest);
+        } finally {
+            $context->authorization = null;
+        }
     }
 }

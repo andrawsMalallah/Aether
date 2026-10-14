@@ -14,8 +14,9 @@ class AccessTokenRepository extends PassportAccessTokenRepository
     public function persistNewAccessToken(AccessTokenEntityInterface $accessTokenEntity): void
     {
         parent::persistNewAccessToken($accessTokenEntity);
+        $context = app(TokenContext::class);
         Passport::token()->newQuery()->whereKey($accessTokenEntity->getIdentifier())
-            ->update(['auth_code_id' => app(TokenContext::class)->authCodeId]);
+            ->update(['auth_code_id' => $context->authCodeId, 'oidc_auth_time' => $context->authTime, 'oidc_nonce' => $context->nonce]);
     }
 
     public function isAccessTokenRevoked(string $tokenId): bool

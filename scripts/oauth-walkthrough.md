@@ -1,6 +1,6 @@
 # Local OAuth2 walkthrough
 
-Use `http://aether.test` and the public client created by `OAuthTestClientSeeder`. This is Phase 3 OAuth2; ID tokens, discovery, and userinfo arrive in Phase 4. Do not connect a production app yet.
+Use `http://aether.test` and the public client created by `OAuthTestClientSeeder`. This walkthrough exercises the OAuth2 foundation; see [oidc-walkthrough.md](oidc-walkthrough.md) for ID tokens, discovery, JWKS, and userinfo. Do not connect a production app yet.
 
 ## Preparation
 
