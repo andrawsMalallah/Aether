@@ -21,6 +21,7 @@
         <ul class="developer-applications">
             @forelse($applications as $application)
                 <li class="developer-application">
+                    <x-ui.application-logo :name="$application['name']" :url="$application['logo_url']" />
                     <h2><a href="{{ route('admin.apps.show', $application['id']) }}">{{ $application['name'] }}</a></h2>
                     <dl class="developer-application-details">
                         <div><dt>Type</dt><dd>{{ $application['type'] }}</dd></div>

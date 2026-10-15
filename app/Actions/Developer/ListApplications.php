@@ -16,7 +16,8 @@ class ListApplications
 
         return OAuthClient::query()
             ->where('owner_type', $user->getMorphClass())->where('owner_id', $user->getKey())
-            ->select(['id', 'name', 'app_type', 'status', 'revoked'])
+            ->where('revoked', false)
+            ->select(['id', 'name', 'logo_path', 'app_type', 'status', 'revoked'])
             ->orderBy('id')->paginate(12);
     }
 }

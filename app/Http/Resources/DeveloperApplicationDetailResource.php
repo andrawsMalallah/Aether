@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\OAuthAppType;
 use App\Models\OAuthClient;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,6 +15,9 @@ class DeveloperApplicationDetailResource extends JsonResource
     {
         return [
             ...(new DeveloperApplicationResource($this->resource))->resolve($request),
+            'confidential' => $this->confidential(),
+            'machine' => $this->app_type === OAuthAppType::Machine,
+            'mobile' => $this->app_type === OAuthAppType::Mobile,
             'homepage_url' => $this->homepage_url,
             'redirect_uris' => $this->redirect_uris,
             'scopes' => array_intersect_key(config('oauth.scopes'), array_flip($this->allowed_scopes ?? [])),

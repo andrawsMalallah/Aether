@@ -103,7 +103,8 @@ h2 { font-size: 19px; }
 .recovery-option summary { cursor: pointer; margin-bottom: 18px; }
 .consent-scopes { padding-left: 20px; margin-bottom: 28px; color: var(--text-secondary); font-size: 13px; line-height: 1.75; }
 .consent-deny { margin-top: 12px; }
-.consent-logo { display: block; object-fit: contain; margin: 0 auto 20px; border-radius: 6px; }
+.application-logo { display: block; width: 48px; height: 48px; object-fit: contain; margin-bottom: 16px; border-radius: 6px; }
+.application-logo--fallback { display: grid; place-items: center; background: var(--surface); color: inherit; border: 1px solid var(--border); font-weight: 600; }
 .auth-card h1, .auth-card h2 { overflow-wrap: anywhere; }
 @media (max-width: 639px) {
     .auth-card { padding: 32px 24px; }
@@ -135,6 +136,7 @@ h2 { font-size: 19px; }
 .developer-integration { overflow-wrap: anywhere; }
 .developer-integration h3 { margin-top: 28px; }
 .developer-integration p { line-height: 1.7; }
+.developer-integration pre { white-space: pre-wrap; }
 .developer-integration-settings { margin: 24px 0; }
 .developer-integration-settings > div { margin-bottom: 16px; }
 .developer-integration-settings dt { color: var(--text-secondary); font-size: 13px; margin-bottom: 6px; }

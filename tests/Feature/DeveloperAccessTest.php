@@ -52,12 +52,13 @@ it('lists only owned applications with escaped names and no credentials', functi
     expect($response->viewData('applications')->total())->toBe(1);
 });
 
-it('paginates owned applications and distinguishes revoked status', function (): void {
+it('paginates owned applications and hides permanently revoked records', function (): void {
     $user = User::factory()->create(['is_developer' => true]);
     for ($applicationNumber = 1; $applicationNumber <= 13; $applicationNumber++) {
-        oauthClientFixture($user)->forceFill(['name' => 'Owned app '.$applicationNumber, 'revoked' => true])->save();
+        oauthClientFixture($user)->forceFill(['name' => 'Owned app '.$applicationNumber])->save();
     }
-    $first = $this->actingAs($user)->get('/developer/apps')->assertOk()->assertSee('Next')->assertSee('Revoked');
+    oauthClientFixture($user)->forceFill(['name' => 'Deleted app marker', 'revoked' => true])->save();
+    $first = $this->actingAs($user)->get('/developer/apps')->assertOk()->assertSee('Next')->assertDontSee('Deleted app marker');
     expect($first->viewData('applications')->count())->toBe(12)
         ->and($first->viewData('applications')->total())->toBe(13);
     $second = $this->get('/developer/apps?page=2')->assertOk()->assertSee('Previous');

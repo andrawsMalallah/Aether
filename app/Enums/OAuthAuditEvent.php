@@ -8,8 +8,10 @@ enum OAuthAuditEvent: string
     case ClientUpdated = 'client.updated';
     case ClientSecretRegenerated = 'client.secret_regenerated';
     case ClientPublished = 'client.published';
+    case MachineApproved = 'client.machine_approved';
     case ClientSuspended = 'client.suspended';
     case ClientRestored = 'client.restored';
+    case ClientDeleted = 'client.deleted';
     case ConsentGranted = 'consent.granted';
     case CodeReplayed = 'code.replayed';
     case RefreshReplayed = 'refresh.replayed';

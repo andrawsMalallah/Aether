@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Developer;
 
 use App\Actions\Developer\RegenerateApplicationSecret;
+use App\Enums\OAuthAppType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Developer\RegenerateApplicationSecretRequest;
 use App\Http\Resources\DeveloperApplicationDetailResource;
@@ -21,7 +22,9 @@ class ApplicationCredentialsController extends Controller
         return response()->view('developer.confirm-change', [
             'application' => (new DeveloperApplicationDetailResource($application))->resolve(),
             'title' => 'Regenerate client secret',
-            'description' => 'The old secret stops working immediately. All access tokens, refresh tokens and pending sign-ins for this app will be invalidated. Existing sessions in your app may remain signed in.',
+            'description' => $application->app_type === OAuthAppType::Machine
+                ? 'The old secret stops working immediately and all access tokens for this service will be invalidated. Update your service with the replacement secret.'
+                : 'The old secret stops working immediately. All access tokens, refresh tokens and pending sign-ins for this app will be invalidated. Existing sessions in your app may remain signed in.',
             'confirmation' => 'I am ready to update my application with the new secret.',
             'button' => 'Regenerate secret',
             'action' => route('developer.apps.secret.store', $application),

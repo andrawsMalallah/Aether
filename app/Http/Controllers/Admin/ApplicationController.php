@@ -36,6 +36,7 @@ class ApplicationController extends Controller
             'application' => (new AdminApplicationResource($application))->resolve(),
             'canSuspend' => Gate::allows('suspend', $application),
             'canRestore' => Gate::allows('restore', $application),
+            'canApproveMachine' => Gate::allows('approveMachine', $application),
         ]);
     }
 

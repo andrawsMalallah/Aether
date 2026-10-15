@@ -1,8 +1,6 @@
 <x-ui.auth-card title="Continue to {{ $client->name }}" description="Choose whether to share your Aether account details with this application.">
     <p class="notice">Signed in as {{ $user->email }}</p>
-    @if($client->logo_path)
-        <img class="consent-logo" src="{{ route('passport.client.logo', $client) }}" alt="{{ $client->name }} logo" width="48" height="48">
-    @endif
+    <x-ui.application-logo :name="$client->name" :url="$client->logo_path ? route('passport.client.logo', $client) : null" />
     <h2>{{ $client->name }} wants to:</h2>
     <ul class="consent-scopes">
         @forelse($scopes as $scope)

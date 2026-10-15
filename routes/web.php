@@ -5,11 +5,13 @@ use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\SecurityController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\MachineApprovalController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Developer\ApplicationController;
 use App\Http\Controllers\Developer\ApplicationCredentialsController;
+use App\Http\Controllers\Developer\ApplicationDeletionController;
 use App\Http\Controllers\Developer\ApplicationPublicationController;
 use App\Http\Middleware\RequireAdministrator;
 use Illuminate\Contracts\View\View;
@@ -35,6 +37,9 @@ Route::middleware(['auth', 'verified', RequireAdministrator::class])
         Route::get('/', [AdminApplicationController::class, 'index'])->name('index');
         Route::get('/{application}', [AdminApplicationController::class, 'show'])->name('show');
         Route::middleware('password.confirm:password.confirm,300')->group(function (): void {
+            Route::get('/{application}/approve-machine', [MachineApprovalController::class, 'show'])->name('machine.approve.confirm');
+            Route::post('/{application}/approve-machine', [MachineApprovalController::class, 'store'])
+                ->middleware('throttle:account-changes')->name('machine.approve');
             Route::get('/{application}/suspend', [AdminApplicationController::class, 'confirm'])->name('suspend.confirm');
             Route::post('/{application}/suspend', [AdminApplicationController::class, 'suspend'])
                 ->middleware('throttle:account-changes')->name('suspend');
@@ -91,11 +96,14 @@ Route::middleware(['auth', 'verified'])->prefix('account')->name('account.')->gr
 Route::middleware(['auth', 'verified'])->get('/developer/apps', [ApplicationController::class, 'index'])->name('developer.apps.index');
 Route::middleware(['auth', 'verified'])->prefix('developer/apps')->name('developer.apps.')->group(function (): void {
     Route::get('/create', [ApplicationController::class, 'create'])->name('create');
+    Route::get('/create-machine', [ApplicationController::class, 'createMachine'])->name('machine.create');
     Route::post('/', [ApplicationController::class, 'store'])->middleware('throttle:account-changes')->name('store');
     Route::get('/{application}/edit', [ApplicationController::class, 'edit'])->name('edit');
     Route::put('/{application}', [ApplicationController::class, 'update'])->middleware('throttle:account-changes')->name('update');
     Route::middleware('password.confirm:password.confirm,300')->group(function (): void {
         Route::get('/{application}/secret', [ApplicationCredentialsController::class, 'confirm'])->name('secret.confirm');
+        Route::get('/{application}/delete', [ApplicationDeletionController::class, 'confirm'])->name('delete.confirm');
+        Route::post('/{application}/delete', [ApplicationDeletionController::class, 'store'])->middleware('throttle:account-changes')->block(10, 5)->name('delete.store');
         Route::post('/{application}/secret', [ApplicationCredentialsController::class, 'store'])->middleware('throttle:account-changes')->block(10, 5)->name('secret.store');
         Route::get('/{application}/publish', [ApplicationPublicationController::class, 'confirm'])->name('publish.confirm');
         Route::post('/{application}/publish', [ApplicationPublicationController::class, 'store'])->middleware('throttle:account-changes')->name('publish.store');

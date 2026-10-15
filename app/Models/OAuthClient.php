@@ -63,4 +63,13 @@ class OAuthClient extends Client
     {
         return ! $this->revoked && in_array($this->status, [OAuthClientStatus::Testing, OAuthClientStatus::Live], true);
     }
+
+    public function supportsDeveloperManagement(): bool
+    {
+        return match ($this->app_type) {
+            OAuthAppType::Web => $this->confidential(),
+            OAuthAppType::Machine => $this->confidential() && $this->grant_types === ['client_credentials'],
+            OAuthAppType::Spa, OAuthAppType::Mobile => ! $this->confidential(),
+        };
+    }
 }

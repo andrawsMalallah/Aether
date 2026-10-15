@@ -4,7 +4,14 @@
         <x-admin.navigation />
         <a href="{{ route('admin.apps.index') }}">All applications</a>
         <h1 class="developer-application-name">{{ $application['name'] }}</h1>
+        <x-ui.application-logo :name="$application['name']" :url="$application['logo_url']" />
         <x-ui.status />
+        @if($application['machine'])
+            <p class="notice">Machine API permissions and activation require administrator approval. Testing blocks token issuance. Restoring this app does not activate it or grant access to a resource API.</p>
+            @if($canApproveMachine)
+                <p><a href="{{ route('admin.apps.machine.approve.confirm', $application['id']) }}">Approve Machine application</a></p>
+            @endif
+        @endif
         <dl class="developer-integration-settings developer-urls">
             <div><dt>Client ID</dt><dd>{{ $application['id'] }}</dd></div>
             <div><dt>Type</dt><dd>{{ $application['type'] }}</dd></div>
@@ -22,8 +29,8 @@
         @if($canSuspend)
             <nav class="developer-actions" aria-label="Administrative actions"><a href="{{ route('admin.apps.suspend.confirm', $application['id']) }}">Suspend application</a></nav>
         @elseif($canRestore)
-            <p class="notice">This application is suspended. Restore it to Testing to allow its owner to sign in again.</p>
-            @if($application['owner_id'] === null)
+            <p class="notice">{{ $application['machine'] ? 'This service is suspended. Restoration returns it to Testing; token issuance remains blocked pending operator approval.' : 'This application is suspended. Restore it to Testing to allow its owner to sign in again.' }}</p>
+            @if($application['owner_id'] === null && !$application['machine'])
                 <p class="notice">No owner is assigned. Testing sign-in requires a developer owner; assign ownership separately before testing.</p>
             @endif
             <nav class="developer-actions" aria-label="Administrative actions"><a href="{{ route('admin.apps.restore.confirm', $application['id']) }}">Restore application</a></nav>

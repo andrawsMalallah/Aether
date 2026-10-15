@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Developer;
 use App\Actions\Developer\ListApplications;
 use App\Actions\Developer\RegisterApplication;
 use App\Actions\Developer\UpdateApplication;
-use App\Enums\OAuthAppType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Developer\RegisterApplicationRequest;
 use App\Http\Requests\Developer\UpdateApplicationRequest;
@@ -38,9 +37,19 @@ class ApplicationController extends Controller
         $user = $request->user();
         $client = $action->handle($user, $request->validated());
         // Only an encrypted, app-bound one-time handoff enters session storage.
-        $request->session()->flash('developer.credentials.'.$client->id, Crypt::encryptString($client->plainSecret));
+        if ($client->confidential()) {
+            $request->session()->flash('developer.credentials.'.$client->id, Crypt::encryptString($client->plainSecret));
+        }
 
         return to_route('developer.apps.show', $client)->with('status', 'Your application has been registered.')
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function createMachine(): Response
+    {
+        Gate::authorize('create', OAuthClient::class);
+
+        return response()->view('developer.create', ['scopes' => [], 'machine' => true])
             ->header('Cache-Control', 'private, no-store');
     }
 
@@ -48,7 +57,7 @@ class ApplicationController extends Controller
     {
         Gate::authorize('view', $application);
         $encryptedSecret = $request->session()->pull('developer.credentials.'.$application->id);
-        $clientSecret = is_string($encryptedSecret) ? Crypt::decryptString($encryptedSecret) : null;
+        $clientSecret = $application->confidential() && is_string($encryptedSecret) ? Crypt::decryptString($encryptedSecret) : null;
 
         return response()->view('developer.show', [
             'application' => (new DeveloperApplicationDetailResource($application))->resolve($request),
@@ -57,7 +66,8 @@ class ApplicationController extends Controller
             'canUpdate' => Gate::allows('update', $application),
             'canRegenerate' => Gate::allows('regenerateSecret', $application),
             'canPublish' => Gate::allows('publish', $application),
-            'integration' => $application->app_type === OAuthAppType::Web && $application->confidential() ? $metadata->discovery() : null,
+            'canDelete' => Gate::allows('delete', $application),
+            'integration' => $application->supportsDeveloperManagement() ? $metadata->discovery() : null,
         ])->header('Cache-Control', 'private, no-store');
     }
 

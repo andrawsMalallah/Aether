@@ -17,7 +17,7 @@ class ListApplications
     {
         Gate::authorize('administerAny', OAuthClient::class);
 
-        $query = OAuthClient::query()->select(['id', 'name', 'app_type', 'status', 'revoked']);
+        $query = OAuthClient::query()->select(['id', 'name', 'logo_path', 'app_type', 'status', 'revoked']);
         $search = $filters['search'] ?? '';
         if ($search !== '') {
             // Treat SQL wildcard characters literally; client IDs match exactly.

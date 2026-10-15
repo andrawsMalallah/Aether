@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 function webRegistrationData(array $overrides = []): array
 {
     return array_replace([
-        'name' => 'My web application', 'homepage_url' => 'https://client.example',
+        'app_type' => 'web', 'name' => 'My web application', 'homepage_url' => 'https://client.example',
         'redirect_urls' => "https://client.example/callback\nhttp://localhost:8765/callback",
         'scopes' => ['openid', 'profile', 'email'],
     ], $overrides);
@@ -24,10 +24,10 @@ function webRegistrationData(array $overrides = []): array
 it('creates a testing owned confidential web client and shows its secret once', function (): void {
     $user = User::factory()->create(['is_developer' => true]);
     $other = User::factory()->create();
-    $this->actingAs($user)->get('/developer/apps/create')->assertOk()->assertSee('Register a web application')->assertDontSee('stats:read');
+    $this->actingAs($user)->get('/developer/apps/create')->assertOk()->assertSee('Register an application')->assertDontSee('stats:read');
     $response = $this->post('/developer/apps', webRegistrationData([
         'owner_id' => $other->id, 'owner_type' => $other->getMorphClass(),
-        'status' => 'live', 'app_type' => 'm2m', 'first_party' => true,
+        'status' => 'live', 'first_party' => true,
         'grant_types' => ['client_credentials'], 'introspection_client_ids' => ['privileged'],
         'allowed_scopes' => ['stats:read'], 'secret' => 'attacker-secret',
     ]));

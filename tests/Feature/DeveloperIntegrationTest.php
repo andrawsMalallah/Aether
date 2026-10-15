@@ -29,7 +29,7 @@ it('shows saved web integration settings using the canonical issuer without cred
         ->assertDontSee('openid email')->assertDontSee('source=login');
 });
 
-it('keeps integration instructions behind verified owner access and excludes public clients', function (): void {
+it('keeps integration instructions behind verified owner access and supports browser clients', function (): void {
     $owner = User::factory()->create(['is_developer' => true]);
     $client = oauthClientFixture($owner, true);
     $this->get(route('developer.apps.show', $client))->assertRedirect('/login');
@@ -38,7 +38,9 @@ it('keeps integration instructions behind verified owner access and excludes pub
     $this->actingAs(User::factory()->create(['is_developer' => true]))
         ->get(route('developer.apps.show', $client))->assertForbidden()->assertDontSee('Connect your application');
     $publicClient = oauthClientFixture($owner);
-    $this->actingAs($owner)->get(route('developer.apps.show', $publicClient))->assertOk()->assertDontSee('Connect your application');
+    $this->actingAs($owner)->get(route('developer.apps.show', $publicClient))->assertOk()->assertSee('Connect your application')
+        ->assertSee('This public client has no secret')->assertSee('Origin configuration is managed separately.')
+        ->assertDontSee('Keep your client secret in your server environment');
 });
 
 it('labels unavailable web integration settings as reference only', function (): void {
