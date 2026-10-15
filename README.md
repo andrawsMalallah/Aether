@@ -147,7 +147,7 @@ Existing ID/status and audit user/client/time indexes support these lists. Type/
 
 ## Validation and manual review
 
-Latest local verification: 235 tests / 1,912 assertions, Pint, Larastan and production build passed. Read-only local MySQL query checks and desktop/320px template/keyboard previews passed. Full Phase 6 and production readiness are not signed off.
+Latest local verification: 236 tests / 1,918 assertions, Pint, Larastan and production build passed. Feature suites generate ephemeral signing keys in shared setup and include a regression with no signing-key files, so clean CI does not depend on local provider keys. Read-only local MySQL query checks and desktop/320px template/keyboard previews passed. Full Phase 6 and production readiness are not signed off.
 
 - Developer: register a Web app, save its secret privately, reload to confirm hidden display, edit settings and review the integration guide. Regenerate and verify old credentials fail while other apps remain usable. Test owner-only Testing and explicit Go live.
 - Administration: test name/ID and combined status/type search, pagination and Clear filters. On a disposable app, confirm password and suspend; verify new sign-in and existing token/refresh/code rejection. Restore to Testing, confirm only its owner can sign in, then publish separately. Revoked credentials must remain invalid throughout.

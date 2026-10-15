@@ -12,16 +12,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
-use phpseclib4\Crypt\RSA;
 
 uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    // Generate an ephemeral test pair once; never read the local provider's signing keys.
-    static $keys;
-    $keys ??= RSA::createKey(2048);
-    config(['passport.private_key' => (string) $keys, 'passport.public_key' => (string) $keys->getPublicKey()]);
-});
 
 it('completes public PKCE consent code token and rotating refresh with correct lifetimes', function (): void {
     $user = User::factory()->create();

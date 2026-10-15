@@ -8,6 +8,7 @@ use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Http;
+use phpseclib4\Crypt\RSA;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -40,6 +41,11 @@ abstract class TestCase extends BaseTestCase
 
         // Test requests use an ephemeral key, never a developer or production key.
         config(['app.key' => 'base64:'.base64_encode(Encrypter::generateKey(config('app.cipher')))]);
+
+        // Every feature suite needs isolated signing keys, including clean CI checkouts.
+        static $signingKeys;
+        $signingKeys ??= RSA::createKey(2048);
+        config(['passport.private_key' => (string) $signingKeys, 'passport.public_key' => (string) $signingKeys->getPublicKey()]);
 
         Http::preventStrayRequests();
         // Exercise Laravel's real breach validator with deterministic k-anonymity responses.

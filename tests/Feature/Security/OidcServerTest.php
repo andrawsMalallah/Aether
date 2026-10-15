@@ -19,9 +19,7 @@ use Tests\TestCase;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    static $keys;
-    $keys ??= RSA::createKey(2048);
-    config(['passport.private_key' => (string) $keys, 'passport.public_key' => (string) $keys->getPublicKey(), 'oidc.issuer' => 'https://aether.example']);
+    config(['oidc.issuer' => 'https://aether.example']);
 });
 
 function oidcParse(string $encoded): UnencryptedToken

@@ -7,15 +7,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
-use phpseclib4\Crypt\RSA;
 
 uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    static $keys;
-    $keys ??= RSA::createKey(2048);
-    config(['passport.private_key' => (string) $keys, 'passport.public_key' => (string) $keys->getPublicKey()]);
-});
 
 function introspectionMachine(): OAuthClient
 {

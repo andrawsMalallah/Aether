@@ -3,8 +3,24 @@
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Laravel\Passport\Passport;
 
 uses(RefreshDatabase::class);
+
+it('issues OAuth credentials without local signing key files', function (): void {
+    $originalPath = Passport::$keyPath;
+    Passport::loadKeysFrom(storage_path('framework/no-test-keys-'.Str::uuid()));
+    try {
+        expect(file_exists(Passport::keyPath('oauth-private.key')))->toBeFalse();
+        $user = User::factory()->create();
+        $client = oauthClientFixture($user, true);
+        $code = oauthCode($this, $user, $client);
+        $this->postJson('/oauth/token', oauthExchange($client, $code))->assertOk()->assertJsonStructure(['access_token', 'id_token']);
+    } finally {
+        Passport::$keyPath = $originalPath;
+    }
+});
 
 it('serves the Aether welcome page with compiled assets', function (): void {
     $this->get('/')
