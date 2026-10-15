@@ -65,19 +65,25 @@ it('combines exact action app actor and inclusive UTC dates without leaking adja
 });
 
 it('paginates newest first with a stable id tie break and preserves only validated filters', function (): void {
+    // MySQL sequences survive rolled-back tests; never assume this fixture starts at ID 1.
+    AuditLog::create(['event' => OAuthAuditEvent::ClientUpdated]);
+    $identifiers = [];
     for ($number = 0; $number < 13; $number++) {
         $log = new AuditLog(['user_id' => $this->admin->id, 'event' => OAuthAuditEvent::ClientSuspended]);
         $log->created_at = '2026-10-15 10:00:00';
         $log->save();
+        $identifiers[] = $log->id;
     }
+    $newestIdentifier = $identifiers[12];
+    $oldestIdentifier = $identifiers[0];
     $this->actingAs($this->admin)->get('/admin/audit?event=client.suspended&actor='.$this->admin->id.'&unrelated=discard')
-        ->assertOk()->assertViewHas('logs', function ($logs): bool {
+        ->assertOk()->assertViewHas('logs', function ($logs) use ($newestIdentifier): bool {
             parse_str(parse_url($logs->nextPageUrl(), PHP_URL_QUERY), $query);
 
-            return $logs->total() === 13 && $logs->count() === 12 && $logs->first()['id'] === 13
+            return $logs->total() === 13 && $logs->count() === 12 && $logs->first()['id'] === $newestIdentifier
                 && $query === ['event' => 'client.suspended', 'actor' => (string) $this->admin->id, 'page' => '2'];
         });
-    $this->get('/admin/audit?event=client.suspended&page=2')->assertOk()->assertViewHas('logs', fn ($logs): bool => $logs->count() === 1 && $logs->first()['id'] === 1);
+    $this->get('/admin/audit?event=client.suspended&page=2')->assertOk()->assertViewHas('logs', fn ($logs): bool => $logs->count() === 1 && $logs->first()['id'] === $oldestIdentifier);
 });
 
 it('eager loads only display fields with a bounded number of queries', function (): void {
