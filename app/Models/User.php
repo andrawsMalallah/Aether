@@ -14,7 +14,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
-/** @property CarbonImmutable|null $pending_email_requested_at */
+/**
+ * @property CarbonImmutable|null $pending_email_requested_at
+ * @property bool $is_developer
+ * @property bool $is_admin
+ */
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -44,10 +48,17 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
     protected function casts(): array
     {
         return [
+            'is_admin' => 'boolean',
+            'is_developer' => 'boolean',
             'email_verified_at' => 'datetime',
             'pending_email_requested_at' => 'immutable_datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function canAccessAdministration(): bool
+    {
+        return $this->is_admin && $this->hasVerifiedEmail() && $this->hasEnabledTwoFactorAuthentication();
     }
 }

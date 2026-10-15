@@ -3,6 +3,7 @@
 namespace App\Services\OAuth;
 
 use App\Models\OAuthClient;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository as PassportClientRepository;
 
@@ -16,7 +17,12 @@ class ClientRepository extends PassportClientRepository
 
     public function findActive(string|int $id): ?Client
     {
-        $client = OAuthClient::query()->find($id);
+        $query = OAuthClient::query();
+        // Exchanges and developer changes share this lock, preventing issuance across rotation.
+        if (DB::transactionLevel() > 0) {
+            $query->lockForUpdate();
+        }
+        $client = $query->find($id);
 
         return $client?->available() ? $client : null;
     }

@@ -4,6 +4,10 @@
         @auth
             <a href="{{ route('account.profile') }}">Your account</a>
             <a href="{{ route('account.security') }}">Security</a>
+            <a href="{{ route('account.developer') }}">Developer</a>
+            @if(auth()->user()->canAccessAdministration())
+                <a href="{{ route('admin.apps.index') }}">Administration</a>
+            @endif
             <form method="POST" action="{{ route('logout') }}" data-submit-form>
                 @csrf
                 <x-ui.button variant="secondary">Sign out</x-ui.button>

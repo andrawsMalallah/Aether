@@ -1,6 +1,6 @@
 # Aether
 
-An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2 with an OpenID Connect identity layer. Discovery, JWKS, scope-filtered userinfo, and standard signed ID tokens support basic "Sign in with Aether" integration. Production hardening and real demo apps remain later phases.
+An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2 with an OpenID Connect identity layer. Discovery, JWKS, scope-filtered userinfo, and standard signed ID tokens support basic "Sign in with Aether" integration. The developer portal, administrative client lifecycle and audit viewer are implemented; production hardening remains ongoing.
 
 ## Requirements
 
@@ -78,7 +78,7 @@ Authorization codes last one minute; access tokens last one hour; refresh tokens
 
 Consent persists independently of token expiry, unions approved scopes, and re-prompts for expansion or revoked grants. The explicit `first_party` flag skips consent; ownerless clients do not automatically become trusted. `prompt=consent` forces a prompt. Consent submissions bind to the signed-in user and recheck current restrictions.
 
-`POST /oauth/token` and `POST /oauth/revoke` are stateless back-channel protocol routes. Browser consent remains protected by web session/CSRF middleware. Confidential clients authenticate with Basic **or** body credentials, never both. Revocation accepts either token type, checks client ownership, revokes the associated access/refresh pair, and returns an empty 200 for unknown tokens. Introspection is deferred.
+`POST /oauth/token`, `/oauth/revoke`, and `/oauth/introspect` are stateless back-channel protocol routes. Browser consent remains protected by web session/CSRF middleware. Confidential clients authenticate with Basic **or** body credentials, never both. Revocation accepts either token type, checks client ownership, revokes the associated access/refresh pair, and returns an empty 200 for unknown tokens. Introspection is restricted to explicitly permitted resource clients and supported machine access tokens.
 
 See [scripts/oauth-walkthrough.md](scripts/oauth-walkthrough.md) for the complete manual flow. Check consent, Allow/Deny, return visits, expanded scopes, and keyboard focus on desktop and a 320px mobile viewport. OAuth tests generate ephemeral signing keys and never use local provider keys. Run `composer check`, `composer audit`, and `npm run build`; hosted CI remains a separate publication gate.
 
@@ -96,6 +96,14 @@ Discovery advertises only authorization-code responses, query response mode, S25
 
 See [scripts/oidc-walkthrough.md](scripts/oidc-walkthrough.md) for manual checks. Phase 4 interoperability was exercised with an isolated `openid-client` 6.8.8 relying party using discovery only; that temporary tool is not an Aether dependency.
 
+## Machine access and restricted introspection
+
+Confidential machine clients use `client_credentials` with explicitly allowed scopes such as `stats:read`. Machine tokens have no human account, refresh token or ID token. The OAuth library uses the client identifier as the machine token subject; do not treat it as a user ID.
+
+`POST /oauth/introspect` authenticates confidential resource clients and requires a privileged `introspection_client_ids` allowlist, which is outside developer self-service input and mass assignment. Only permitted live machine access tokens return metadata. Unsupported, expired, revoked or unauthorized tokens return `active:false`; invalid callers receive a safe authentication/authorization error. Header/form credentials and token input must never appear in logs or screenshots. This endpoint is not general user-token or refresh-token introspection.
+
+The separate Waraq/Pocket resource apps and Pulse console client demonstrate scoped aggregate access with per-request revocation checking. They are independent repositories and are not included in this project. The browser-only SPA example remains deferred.
+
 ## Quality commands
 
 - `composer test`: Pest feature and unit tests.
@@ -111,4 +119,37 @@ After the workflow has been pushed and run, enable a GitHub branch ruleset for `
 
 ## Project guidance
 
-Read `AGENTS.md` and `guide/MEMORY.md` at session start. The roadmap and architecture, security, testing, hosting, and design references live in `guide/`.
+Local AI instructions and planning/session notes are maintained separately from published application source.
+
+## Developer portal
+
+Verified users can activate developer access from their account and manage owned applications at `/developer/apps`. Lists are paginated and ownership checks include both owner type and ID. Self-service registration supports confidential Web apps only, using authorization code plus refresh grants, S256 PKCE, exact callbacks and identity scopes (`openid`, `profile`, `email`). New apps start in Testing, where only their owner may sign in. Provider-wide trust and introspection permissions are never self-service inputs.
+
+Client secrets are hashed by Passport and shown once after registration or regeneration. The encrypted, application-bound session handoff is consumed on the authorized detail read, serialized with session blocking and served private/no-store. Store the secret in the integrating app's server environment; never put it in browser storage, source control or logs.
+
+Owners can edit settings, regenerate secrets and publish Testing Web apps to Live. Sensitive actions require a password confirmed within 300 seconds and explicit confirmation. Regeneration atomically revokes the app's access/refresh tokens and pending authorization codes in bounded batches. Callback changes cancel pending codes; removed scopes affect current token checks. Exchanges share the client row lock with lifecycle changes. Consent and existing client-local sessions remain independent of credential revocation.
+
+Each Web app detail page includes its client ID, saved callbacks/scopes, canonical issuer and protocol endpoints, plus secure PKCE/OIDC integration instructions. Other registration types, logos/deletion, broader code examples and the SPA example remain unfinished.
+
+## Administration
+
+Run normal migrations against an approved database before using administration. `users.is_admin` is privileged and not mass assignable. Admin pages require a verified account and confirmed Fortify two-factor authentication. Newly bootstrapped admins must enable and confirm 2FA under Security before entering `/admin/apps`.
+
+The explicit `php artisan db:seed --class=AdminSeeder` bootstrap reads `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` through config. Supply credentials privately, never in command history or source control. Passwords require at least 12 characters with uppercase/lowercase letters, numbers and symbols. The seeder is not called by default seeding, refuses to promote existing ordinary accounts or create additional first admins, and never resets an existing admin's password. Remove transient bootstrap configuration when no longer needed and handle configuration caches securely.
+
+Administrators can list all applications, search by part of a name or exact client ID, and combine status/type filters. Revoked is separate from Testing/Live/Suspended; selected filters persist across twelve-row pages. Invalid queries return field errors on a usable clean page. Application details never reveal or consume an owner's one-time secret handoff.
+
+Suspension requires recent password and explicit confirmation, stops sign-in/token issuance and atomically revokes app access/refresh tokens and pending codes. Restoration applies only to non-revoked Suspended apps and returns them to Testing; old credentials remain invalid. Both operations recheck policy under the same client lock as issuance and record an audit event. Restoration does not assign ownership, change secrets or publish. Web owners separately choose Go live; ownerless clients cannot sign in in Testing. Other app types retain publication restrictions. Client-local sessions may remain signed in.
+
+`/admin/audit` is read-only and displays already-recorded application/OAuth events. Filter by action, exact client ID, exact actor email or user ID, and inclusive UTC dates. Results use newest timestamp/ID order with twelve-row pagination. Names are current lookup values, not historical snapshots; missing records retain their IDs. Replay/token-revocation user references identify the credential owner, not necessarily the requester. No credentials or raw requests are exposed. This viewer does not add missing event tracking. User oversight remains unfinished.
+
+Existing ID/status and audit user/client/time indexes support these lists. Type/revoked/event filters have no dedicated indexes and contains-name search scans; profile at scale before choosing additional indexes.
+
+## Validation and manual review
+
+Latest local verification: 235 tests / 1,912 assertions, Pint, Larastan and production build passed. Read-only local MySQL query checks and desktop/320px template/keyboard previews passed. Full Phase 6 and production readiness are not signed off.
+
+- Developer: register a Web app, save its secret privately, reload to confirm hidden display, edit settings and review the integration guide. Regenerate and verify old credentials fail while other apps remain usable. Test owner-only Testing and explicit Go live.
+- Administration: test name/ID and combined status/type search, pagination and Clear filters. On a disposable app, confirm password and suspend; verify new sign-in and existing token/refresh/code rejection. Restore to Testing, confirm only its owner can sign in, then publish separately. Revoked credentials must remain invalid throughout.
+- Audit: find suspension/restoration/publication events, combine client/actor/action/UTC-date filters, check unavailable-record fallbacks and pagination. Confirm ordinary or unverified users cannot access it, and admins without confirmed 2FA are sent to Security.
+- On desktop and 320px width, check wrapping, labels, Tab focus, checkbox Space and form Enter submission. Use disposable apps and keep secrets out of screenshots.

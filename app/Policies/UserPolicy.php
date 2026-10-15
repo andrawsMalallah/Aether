@@ -6,6 +6,11 @@ use App\Models\User;
 
 class UserPolicy
 {
+    public function enableDeveloper(User $authenticatedUser, User $user): bool
+    {
+        return $authenticatedUser->is($user) && $user->hasVerifiedEmail();
+    }
+
     public function view(User $authenticatedUser, User $user): bool
     {
         return $authenticatedUser->is($user);

@@ -49,7 +49,7 @@ body {
 ::selection { background: #d6c08a; color: #1b2a41; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 h1, h2 { font-family: "Source Serif 4", Georgia, serif; font-weight: 400; }
 h1 { font-size: 25px; }
 h2 { font-size: 19px; }
@@ -69,8 +69,8 @@ h2 { font-size: 19px; }
 .auth-card__footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; border-top: 0.5px solid var(--border); margin-top: 28px; padding-top: 20px; font-size: 12px; }
 .field { margin-bottom: 18px; }
 .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--text-secondary); }
-.field input { width: 100%; min-height: 44px; border: 0.5px solid var(--border); background: var(--surface-input); border-radius: 5px; padding: 11px 13px; color: var(--text-primary); font: inherit; font-size: 14px; }
-.field input[aria-invalid="true"] { border-color: var(--danger-border); }
+.field input, .field select { width: 100%; min-height: 44px; border: 0.5px solid var(--border); background: var(--surface-input); border-radius: 5px; padding: 11px 13px; color: var(--text-primary); font: inherit; font-size: 14px; }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--danger-border); }
 .field__error, .field__help { margin: 6px 0 0; font-size: 12px; line-height: 1.6; }
 .field__error { color: var(--danger-text); }
 .field__help { color: var(--text-secondary); }
@@ -115,3 +115,29 @@ h2 { font-size: 19px; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto; }
 }
+
+.developer-applications { list-style: none; padding: 0; margin: 28px 0; }
+.developer-application { padding: 24px 0; border-top: 0.5px solid var(--border); }
+.developer-application h2 { margin: 0 0 14px; overflow-wrap: anywhere; }
+.developer-application-details { display: flex; flex-wrap: wrap; gap: 20px 40px; margin: 0; }
+.developer-application-details dt { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.developer-application-details dd { margin: 0; font-size: 14px; }
+.developer-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; font-size: 13px; }
+.developer-pagination a { display: inline-flex; align-items: center; min-height: 44px; }
+.field textarea { width: 100%; min-height: 100px; border: 0.5px solid var(--border); background: var(--surface-input); border-radius: 5px; padding: 11px 13px; color: var(--text-primary); font: inherit; font-size: 14px; resize: vertical; }
+.field textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.field textarea[aria-invalid="true"] { border-color: var(--danger-border); }
+.developer-scopes { border: 0; padding: 0; margin: 0 0 24px; }
+.developer-scopes legend { font-family: "Source Serif 4", Georgia, serif; font-size: 19px; }
+.developer-application-name, .developer-urls { overflow-wrap: anywhere; }
+.developer-actions { display: flex; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
+.developer-actions a { display: inline-flex; align-items: center; min-height: 44px; }
+.developer-integration { overflow-wrap: anywhere; }
+.developer-integration h3 { margin-top: 28px; }
+.developer-integration p { line-height: 1.7; }
+.developer-integration-settings { margin: 24px 0; }
+.developer-integration-settings > div { margin-bottom: 16px; }
+.developer-integration-settings dt { color: var(--text-secondary); font-size: 13px; margin-bottom: 6px; }
+.developer-integration-settings dd { margin: 0; }
+.developer-integration-settings ul { margin: 0; padding-left: 20px; }
+.admin-filter-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 0 24px; }
