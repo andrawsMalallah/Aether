@@ -3,6 +3,7 @@
 use App\Http\Controllers\OAuth\AuthorizationController;
 use App\Http\Controllers\OAuth\ClientLogoController;
 use App\Http\Controllers\OAuth\ConsentController;
+use App\Http\Controllers\OAuth\IntrospectTokenController;
 use App\Http\Controllers\OAuth\OidcMetadataController;
 use App\Http\Controllers\OAuth\RevokeTokenController;
 use App\Http\Controllers\OAuth\TokenController;
@@ -19,6 +20,7 @@ Route::prefix('oauth')->name('passport.')->middleware(OAuthResponse::class)->gro
     // Back-channel protocol endpoints deliberately have no browser session or CSRF middleware.
     Route::post('/token', [TokenController::class, 'store'])->middleware('throttle:oauth-token')->name('token');
     Route::post('/revoke', RevokeTokenController::class)->middleware('throttle:oauth-revoke')->name('revoke');
+    Route::post('/introspect', IntrospectTokenController::class)->middleware('throttle:oauth-introspect')->name('introspect');
     Route::match(['GET', 'POST'], '/userinfo', UserInfoController::class)->middleware('throttle:oidc-userinfo')->name('userinfo');
     Route::middleware(['web', 'throttle:oauth-authorize'])->group(function (): void {
         // Passport validates the redirect before it prompts a guest to sign in.

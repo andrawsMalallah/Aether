@@ -13,6 +13,7 @@ use Laravel\Passport\Scope;
  * @property list<string> $redirect_uris
  * @property list<string> $grant_types
  * @property list<string>|null $allowed_scopes
+ * @property list<string>|null $introspection_client_ids
  */
 class OAuthClient extends Client
 {
@@ -27,6 +28,7 @@ class OAuthClient extends Client
         'revoked' => 'bool',
         'first_party' => 'bool',
         'allowed_scopes' => 'array',
+        'introspection_client_ids' => 'array',
         'status' => OAuthClientStatus::class,
         'app_type' => OAuthAppType::class,
     ];

@@ -72,7 +72,7 @@ class OAuthServiceProvider extends ServiceProvider
         Passport::refreshTokensExpireIn(new DateInterval('P30D'));
         Passport::setDefaultScope([]);
         RateLimiter::for('oauth-authorize', fn (Request $request): Limit => Limit::perMinute(30)->by('oauth-authorize:'.$request->session()->getId()));
-        foreach (['oauth-token', 'oauth-revoke'] as $limiter) {
+        foreach (['oauth-token', 'oauth-revoke', 'oauth-introspect'] as $limiter) {
             RateLimiter::for($limiter, function (Request $request) use ($limiter): array {
                 $clientId = $request->input('client_id', $request->getUser());
 

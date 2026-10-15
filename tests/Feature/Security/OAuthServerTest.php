@@ -233,6 +233,31 @@ it('issues scope-limited machine tokens only for confidential live machine clien
     $this->postJson('/oauth/token', $credentials)->assertStatus(400);
 });
 
+it('limits Pulse machine credentials to application statistics without a user identity', function (): void {
+    $client = app(ClientRepository::class)->createClientCredentialsGrantClient('Pulse');
+    $client->forceFill([
+        'status' => OAuthClientStatus::Live,
+        'app_type' => OAuthAppType::Machine,
+        'allowed_scopes' => ['stats:read'],
+    ])->save();
+    $credentials = ['grant_type' => 'client_credentials', 'client_id' => $client->getKey(), 'client_secret' => $client->plainSecret];
+
+    $response = $this->postJson('/oauth/token', [...$credentials, 'scope' => 'stats:read'])->assertOk();
+    expect($response->json('refresh_token'))->toBeNull();
+    expect($response->json('id_token'))->toBeNull();
+    $token = Passport::token()->newQuery()->firstOrFail();
+    expect($token->scopes)->toBe(['stats:read']);
+    expect($token->user_id)->toBeNull();
+    expect(oauthBearerWorks($response->json('access_token')))->toBeTrue();
+
+    foreach (['openid', 'profile', 'email', 'stats:read email', '*', 'unknown:scope'] as $scope) {
+        $this->postJson('/oauth/token', [...$credentials, 'scope' => $scope])
+            ->assertStatus(400)->assertJsonPath('error', 'invalid_scope');
+    }
+    $this->postJson('/oauth/token', [...$credentials, 'client_secret' => 'incorrect-secret', 'scope' => 'stats:read'])->assertUnauthorized();
+    $this->postJson('/oauth/token', [...$credentials, 'grant_type' => 'authorization_code', 'scope' => 'stats:read'])->assertStatus(400);
+});
+
 it('supports Basic client authentication without allowing mixed authentication methods', function (): void {
     $client = oauthClientFixture(confidential: true);
     $data = oauthExchange($client, oauthCode($this, User::factory()->create(), $client));
@@ -269,7 +294,7 @@ it('does not expose unsupported grants or Passport client management endpoints',
         $this->postJson('/oauth/token', ['grant_type' => $grant, 'client_id' => $client->getKey()])->assertStatus(400);
     }
     $this->get(oauthAuthorizeUrl([...oauthParameters($client), 'response_type' => 'token']))->assertStatus(400)->assertHeaderMissing('Location');
-    foreach (['/oauth/clients', '/oauth/tokens', '/oauth/scopes', '/oauth/device', '/oauth/personal-access-tokens', '/oauth/introspect'] as $path) {
+    foreach (['/oauth/clients', '/oauth/tokens', '/oauth/scopes', '/oauth/device', '/oauth/personal-access-tokens'] as $path) {
         $this->getJson($path)->assertNotFound();
     }
 });
