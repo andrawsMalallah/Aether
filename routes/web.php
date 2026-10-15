@@ -5,6 +5,7 @@ use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\SecurityController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Developer\ApplicationController;
@@ -19,6 +20,12 @@ use Laravel\Fortify\Http\Controllers\EmailVerificationNotificationController;
 use Laravel\Fortify\Http\Controllers\EmailVerificationPromptController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticatedSessionController;
 use Laravel\Fortify\Http\Controllers\VerifyEmailController;
+
+Route::middleware(['auth', 'verified', RequireAdministrator::class])
+    ->prefix('admin/users')->name('admin.users.')->group(function (): void {
+        Route::get('/', [AdminUserController::class, 'index'])->name('index');
+        Route::get('/{user}', [AdminUserController::class, 'show'])->whereNumber('user')->name('show');
+    });
 
 Route::middleware(['auth', 'verified', RequireAdministrator::class])
     ->get('/admin/audit', [AuditLogController::class, 'index'])->name('admin.audit.index');
