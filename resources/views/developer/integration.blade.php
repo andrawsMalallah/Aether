@@ -53,4 +53,9 @@
     <p>Changing callbacks cancels pending codes; removing scopes can require signing in again. Suspension or permanent deletion blocks new sign-in and invalidates this app's credentials.</p>
     <p>While Testing, only you can sign in through this app. After checking the full flow, use Go live to allow other verified users; consent and PKCE still apply.</p>
     <p>Protocol references: <a href="https://openid.net/specs/openid-connect-core-1_0.html">OpenID Connect Core</a> and <a href="https://www.rfc-editor.org/rfc/rfc7636">PKCE (RFC 7636)</a>.</p>
+    @if($application['confidential'])
+        @include('developer.laravel-example')
+    @else
+        @include('developer.vue-example')
+    @endif
 </section>

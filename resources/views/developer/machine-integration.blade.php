@@ -16,4 +16,5 @@ client_secret=YOUR_CLIENT_SECRET
 scope=ADMIN_APPROVED_SCOPES</code></pre>
     <p>Call the approved API with <code>Authorization: Bearer YOUR_ACCESS_TOKEN</code>. Keep tokens private. Obtain a new access token when needed; there is no refresh grant for Machine apps.</p>
     <p>To revoke a token, send a form-encoded POST to the revocation endpoint with <code>client_id</code>, <code>client_secret</code> and <code>token</code>. Secret rotation, suspension and deletion immediately invalidate this application's tokens.</p>
+    @include('developer.machine-example')
 </section>
