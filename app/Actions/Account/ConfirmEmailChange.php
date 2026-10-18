@@ -2,6 +2,8 @@
 
 namespace App\Actions\Account;
 
+use App\Enums\OAuthAuditEvent;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +31,7 @@ class ConfirmEmailChange
                     'pending_email' => null,
                     'pending_email_requested_at' => null,
                 ])->save();
+                AuditLog::create(['user_id' => $lockedUser->id, 'event' => OAuthAuditEvent::EmailVerified]);
             });
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['email' => 'This address is no longer available. Request another email change.']);

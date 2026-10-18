@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
@@ -59,7 +60,7 @@ class SecurityController extends Controller
         $user = $request->user();
         abort_if($user->hasEnabledTwoFactorAuthentication(), 409);
         try {
-            $confirm($user, $request->validated('code'));
+            DB::transaction(fn () => $confirm($user, $request->validated('code')));
         } catch (ValidationException $exception) {
             // Our shared field components use the default error bag.
             throw $exception->errorBag('default')->redirectTo(route('account.security'));
@@ -73,14 +74,14 @@ class SecurityController extends Controller
         /** @var User $user */
         $user = $request->user();
         abort_unless($user->hasEnabledTwoFactorAuthentication(), 409);
-        $generate($user);
+        DB::transaction(fn () => $generate($user));
 
         return to_route('account.security')->with('show_recovery_codes', true)->with('status', 'New recovery codes generated. Your previous codes no longer work.');
     }
 
     public function disable(TwoFactorSettingsRequest $request, DisableTwoFactorAuthentication $disable): RedirectResponse
     {
-        $disable($request->user());
+        DB::transaction(fn () => $disable($request->user()));
         $request->session()->forget('show_recovery_codes');
 
         return to_route('account.security')->with('status', 'Two-factor authentication is disabled.');

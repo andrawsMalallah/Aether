@@ -35,6 +35,7 @@ class ApplicationController extends Controller
         return response()->view('admin.show', [
             'application' => (new AdminApplicationResource($application))->resolve(),
             'canSuspend' => Gate::allows('suspend', $application),
+            'canRevokeTokens' => Gate::allows('revokeTokens', $application),
             'canRestore' => Gate::allows('restore', $application),
             'canApproveMachine' => Gate::allows('approveMachine', $application),
         ]);

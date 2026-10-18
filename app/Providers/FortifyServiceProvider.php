@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Authentication\AuditLoginLockout;
 use App\Services\Authentication\TwoFactorAuthenticationProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View;
@@ -24,8 +25,8 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::verifyEmailView(fn (): View => view('auth.verify-email'));
         Fortify::twoFactorChallengeView(fn (): View => view('auth.two-factor-challenge'));
         RateLimiter::for('two-factor', fn (Request $request): array => [
-            Limit::perMinute(5)->by('two-factor:user:'.(string) $request->session()->get('login.id', 'guest')),
-            Limit::perMinute(30)->by('two-factor:ip:'.$request->ip()),
+            Limit::perMinute(5)->by('two-factor:user:'.(string) $request->session()->get('login.id', 'guest'))->response(app(AuditLoginLockout::class)->respond(...)),
+            Limit::perMinute(30)->by('two-factor:ip:'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
         ]);
         RateLimiter::for('password-confirmation', fn (Request $request): Limit => Limit::perMinute(5)->by('password-confirmation:'.$request->user()?->getAuthIdentifier()));
         RateLimiter::for('two-factor-settings', fn (Request $request): Limit => Limit::perMinute(5)->by('two-factor-settings:'.$request->user()?->getAuthIdentifier()));
@@ -33,8 +34,8 @@ class FortifyServiceProvider extends ServiceProvider
             $email = is_string($request->input('email')) ? strtolower($request->input('email')) : '';
 
             return [
-                Limit::perMinute(5)->by('login:email:'.$email.':'.$request->ip()),
-                Limit::perMinute(30)->by('login:ip:'.$request->ip()),
+                Limit::perMinute(5)->by('login:email:'.$email.':'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
+                Limit::perMinute(30)->by('login:ip:'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
             ];
         });
         RateLimiter::for('registration', fn (Request $request): Limit => Limit::perHour(10)->by('registration:'.$request->ip()));

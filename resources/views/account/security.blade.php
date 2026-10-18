@@ -4,6 +4,21 @@
         <h1>Security</h1>
         <p class="page-description">Protect your account with an authenticator app.</p>
         <x-ui.status />
+        <section class="settings-section" aria-labelledby="export-title">
+            <h2 id="export-title">Account data</h2>
+            <p>Prepare a private copy of your Aether account data.</p>
+            <a href="{{ route('account.export.index') }}">Export account data</a>
+        </section>
+        <section class="settings-section" aria-labelledby="connected-apps-title">
+            <h2 id="connected-apps-title">Connected apps</h2>
+            <p>Review the permissions you approved and disconnect applications.</p>
+            <a href="{{ route('account.connected-apps.index') }}">Manage connected apps</a>
+        </section>
+        <section class="settings-section" aria-labelledby="sessions-title">
+            <h2 id="sessions-title">Active sessions</h2>
+            <p>Review where your Aether account is signed in and revoke other sessions.</p>
+            <a href="{{ route('account.sessions.index') }}">Manage active sessions</a>
+        </section>
         <section class="settings-section" aria-labelledby="two-factor-title">
             <h2 id="two-factor-title">Two-factor authentication</h2>
             @if($user->hasEnabledTwoFactorAuthentication())

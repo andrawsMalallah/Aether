@@ -24,6 +24,11 @@ class OAuthClientPolicy
         return $this->administer($user, $client) && $client->available();
     }
 
+    public function revokeTokens(User $user, OAuthClient $client): bool
+    {
+        return $this->administer($user, $client) && $client->available();
+    }
+
     public function restore(User $user, OAuthClient $client): bool
     {
         return $this->administer($user, $client) && ! $client->revoked && $client->status === OAuthClientStatus::Suspended;

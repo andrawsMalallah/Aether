@@ -17,6 +17,8 @@ class AccessTokenRepository extends PassportAccessTokenRepository
         $context = app(TokenContext::class);
         Passport::token()->newQuery()->whereKey($accessTokenEntity->getIdentifier())
             ->update(['auth_code_id' => $context->authCodeId, 'oidc_auth_time' => $context->authTime, 'oidc_nonce' => $context->nonce]);
+        // Hold only safe references; issuance can still fail after persistence.
+        $context->issuedCredentialOwner = ['user_id' => $accessTokenEntity->getUserIdentifier(), 'client_id' => $accessTokenEntity->getClient()->getIdentifier()];
     }
 
     public function isAccessTokenRevoked(string $tokenId): bool

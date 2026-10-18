@@ -1,14 +1,19 @@
 <?php
 
+use App\Http\Controllers\Account\AccountExportController;
+use App\Http\Controllers\Account\ConnectedAppsController;
 use App\Http\Controllers\Account\DeveloperController;
 use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\SecurityController;
+use App\Http\Controllers\Account\SessionController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
+use App\Http\Controllers\Admin\ApplicationTokenRevocationController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\MachineApprovalController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Developer\ApplicationController;
 use App\Http\Controllers\Developer\ApplicationCredentialsController;
 use App\Http\Controllers\Developer\ApplicationDeletionController;
@@ -21,7 +26,6 @@ use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 use Laravel\Fortify\Http\Controllers\EmailVerificationNotificationController;
 use Laravel\Fortify\Http\Controllers\EmailVerificationPromptController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticatedSessionController;
-use Laravel\Fortify\Http\Controllers\VerifyEmailController;
 
 Route::middleware(['auth', 'verified', RequireAdministrator::class])
     ->prefix('admin/users')->name('admin.users.')->group(function (): void {
@@ -37,6 +41,9 @@ Route::middleware(['auth', 'verified', RequireAdministrator::class])
         Route::get('/', [AdminApplicationController::class, 'index'])->name('index');
         Route::get('/{application}', [AdminApplicationController::class, 'show'])->name('show');
         Route::middleware('password.confirm:password.confirm,300')->group(function (): void {
+            Route::get('/{application}/revoke-tokens', [ApplicationTokenRevocationController::class, 'show'])->name('tokens.revoke.confirm');
+            Route::post('/{application}/revoke-tokens', [ApplicationTokenRevocationController::class, 'store'])
+                ->middleware('throttle:account-changes')->name('tokens.revoke');
             Route::get('/{application}/approve-machine', [MachineApprovalController::class, 'show'])->name('machine.approve.confirm');
             Route::post('/{application}/approve-machine', [MachineApprovalController::class, 'store'])
                 ->middleware('throttle:account-changes')->name('machine.approve');
@@ -79,7 +86,16 @@ Route::middleware(['auth', 'verified'])->prefix('account')->name('account.')->gr
     Route::get('/developer', [DeveloperController::class, 'show'])->name('developer');
     Route::post('/developer/enable', [DeveloperController::class, 'enable'])->middleware('throttle:account-changes')->name('developer.enable');
     Route::middleware('password.confirm:password.confirm,300')->group(function (): void {
+        Route::get('/export', [AccountExportController::class, 'index'])->name('export.index');
+        Route::post('/export', [AccountExportController::class, 'store'])->middleware('throttle:account-changes')->name('export.store');
+        Route::get('/export/{accountExport}/download', [AccountExportController::class, 'download'])->whereUuid('accountExport')->name('export.download');
         Route::get('/security', [SecurityController::class, 'show'])->name('security');
+        Route::get('/sessions', [SessionController::class, 'index'])->name('sessions.index');
+        Route::get('/connected-apps', [ConnectedAppsController::class, 'index'])->name('connected-apps.index');
+        Route::post('/connected-apps/{consent}/disconnect', [ConnectedAppsController::class, 'disconnect'])
+            ->whereNumber('consent')->middleware('throttle:account-changes')->name('connected-apps.disconnect');
+        Route::post('/sessions/revoke', [SessionController::class, 'revoke'])->middleware('throttle:account-changes')->name('sessions.revoke');
+        Route::post('/sessions/revoke-others', [SessionController::class, 'revokeOthers'])->middleware('throttle:account-changes')->name('sessions.revoke-others');
         Route::post('/two-factor', [SecurityController::class, 'enable'])->middleware('throttle:account-changes')->name('two-factor.enable');
         Route::post('/two-factor/confirm', [SecurityController::class, 'confirm'])->middleware('throttle:two-factor-settings')->name('two-factor.confirm');
         Route::post('/two-factor/recovery-codes', [SecurityController::class, 'regenerate'])->middleware('throttle:account-changes')->name('two-factor.regenerate');

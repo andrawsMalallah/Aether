@@ -14,7 +14,8 @@ class ResetUserPassword
     /** @param array{email: string, token: string, password: string, password_confirmation: string} $attributes */
     public function handle(array $attributes): string
     {
-        return Password::broker()->reset($attributes, function (User $user, string $password): void {
+        // The account change, consumed broker link and audit record succeed together.
+        return DB::transaction(fn (): string => Password::broker()->reset($attributes, function (User $user, string $password): void {
             $user->forceFill([
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),
@@ -23,6 +24,6 @@ class ResetUserPassword
             ])->save();
             DB::table('sessions')->where('user_id', $user->id)->delete();
             event(new PasswordReset($user));
-        });
+        }));
     }
 }

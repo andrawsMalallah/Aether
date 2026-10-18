@@ -35,5 +35,8 @@
             @endif
             <nav class="developer-actions" aria-label="Administrative actions"><a href="{{ route('admin.apps.restore.confirm', $application['id']) }}">Restore application</a></nav>
         @endif
+        @if($canRevokeTokens)
+            <p><a href="{{ route('admin.apps.tokens.revoke.confirm', $application['id']) }}">Revoke tokens</a></p>
+        @endif
     </main>
 </x-layout>

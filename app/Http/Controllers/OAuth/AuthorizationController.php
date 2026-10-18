@@ -7,6 +7,7 @@ use App\Models\Consent;
 use App\Services\OAuth\OidcAuthorizationRequest;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Passport\Client;
 use Laravel\Passport\Contracts\AuthorizationViewResponse;
@@ -26,7 +27,9 @@ class AuthorizationController extends PassportAuthorizationController
         $request->session()->forget(['authToken', 'authRequest']);
         app(AuthorizeRequest::class);
 
-        return parent::authorize($psrRequest, $request, $psrResponse, $viewResponse);
+        // Automatic saved-consent approval must serialize with disconnect, too.
+        // ClientRepository::findActive acquires the issuance lock inside this transaction.
+        return DB::transaction(fn () => parent::authorize($psrRequest, $request, $psrResponse, $viewResponse));
     }
 
     /** @return Scope[] */

@@ -3,8 +3,8 @@
     <main id="main-content" class="account-content">
         <x-admin.navigation />
         <h1>Audit log</h1>
-        <p class="page-description">Recorded application and OAuth events. All times and date filters use UTC. Names reflect current records; deleted records retain their IDs.</p>
-        <p class="page-description">For replay and token-revocation events, the user reference identifies the credential owner, not necessarily the person who sent the request.</p>
+        <p class="page-description">Recorded sign-in, account security, application and OAuth events. All times and date filters use UTC. Names reflect current records; deleted records retain their IDs.</p>
+        <p class="page-description">For failed sign-ins, second-factor challenges and OAuth credential events, the user reference identifies the account involved, not proof of who sent the request. Unknown accounts and password sign-in rate limits may have no user recorded.</p>
         <form method="GET" action="{{ route('admin.audit.index') }}">
             <x-ui.select name="event" label="Action" :options="$events" :value="$filters['event'] ?? ''" placeholder="All actions" />
             <x-ui.field name="client_id" label="Application client ID" :value="$filters['client_id'] ?? ''" maxlength="36" />

@@ -16,6 +16,17 @@ beforeEach(function (): void {
     $this->admin = User::factory()->create(['is_admin' => true, 'two_factor_secret' => Crypt::encryptString('audit-test-only'), 'two_factor_confirmed_at' => now()]);
 });
 
+it('lists and filters the new security and token audit events without extra stored metadata', function (): void {
+    foreach ([OAuthAuditEvent::LoginSucceeded, OAuthAuditEvent::LoginLockedOut, OAuthAuditEvent::TwoFactorEnabled,
+        OAuthAuditEvent::RecoveryCodesRegenerated, OAuthAuditEvent::PasswordReset, OAuthAuditEvent::EmailVerified,
+        OAuthAuditEvent::TokenIssued, OAuthAuditEvent::TokenRefreshed] as $event) {
+        AuditLog::create(['user_id' => $this->admin->id, 'event' => $event]);
+    }
+    $this->actingAs($this->admin)->get('/admin/audit?event=token.refreshed')->assertOk()
+        ->assertViewHas('logs', fn ($logs): bool => $logs->total() === 1 && $logs->first()['event'] === 'token.refreshed')
+        ->assertSee('login.success')->assertSee('2fa.recovery_codes_regenerated')->assertSee('account involved');
+});
+
 it('requires verified administrator and confirmed two factor and exposes no audit writes', function (): void {
     $this->get('/admin/audit')->assertRedirect('/login');
     $this->actingAs(User::factory()->create(['is_developer' => true]))->get('/admin/audit')->assertForbidden();

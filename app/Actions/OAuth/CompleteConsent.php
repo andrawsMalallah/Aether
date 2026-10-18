@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Consent;
 use App\Models\OAuthClient;
 use App\Models\User;
+use App\Notifications\ApplicationApproved;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use League\OAuth2\Server\AuthorizationServer;
@@ -37,6 +38,11 @@ class CompleteConsent
                 'revoked_at' => null,
             ]);
             AuditLog::query()->create(['user_id' => $user->getKey(), 'client_id' => $client->getKey(), 'event' => OAuthAuditEvent::ConsentGranted]);
+
+            $permissions = array_map(fn (string $scope): string => config('oauth.scopes.'.$scope, $scope), $scopes);
+            $notification = new ApplicationApproved($client->name, $permissions, now()->utc()->format('Y-m-d H:i:s').' UTC');
+            // No email for rolled-back grants, denied requests or automatic saved consent.
+            DB::afterCommit(fn () => $user->notify($notification));
 
             return $result;
         });
