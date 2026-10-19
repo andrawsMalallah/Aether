@@ -85,7 +85,7 @@ class OAuthClientPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasVerifiedEmail() && $user->is_developer;
+        return $user->accountAvailable() && $user->hasVerifiedEmail() && $user->is_developer;
     }
 
     public function introspectToken(?User $user, OAuthClient $client): bool

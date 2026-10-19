@@ -22,6 +22,8 @@ class RegisterApplication
         Gate::authorize('create', OAuthClient::class);
 
         return DB::transaction(function () use ($user, $data): OAuthClient {
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user->accountAvailable() && $user->hasVerifiedEmail() && $user->is_developer, 403);
             $appType = OAuthAppType::from($data['app_type']);
             abort_unless(in_array($appType, [OAuthAppType::Web, OAuthAppType::Spa, OAuthAppType::Mobile, OAuthAppType::Machine], true), 403);
             /** @var OAuthClient $client */

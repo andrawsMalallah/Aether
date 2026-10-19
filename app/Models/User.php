@@ -20,6 +20,9 @@ use Laravel\Passport\HasApiTokens;
  * @property Carbon|null $email_verified_at
  * @property bool $is_developer
  * @property bool $is_admin
+ * @property CarbonImmutable|null $deletion_requested_at
+ * @property CarbonImmutable|null $deletion_due_at
+ * @property CarbonImmutable|null $anonymized_at
  */
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
@@ -55,12 +58,25 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             'email_verified_at' => 'datetime',
             'pending_email_requested_at' => 'immutable_datetime',
             'password' => 'hashed',
+            'deletion_requested_at' => 'immutable_datetime',
+            'deletion_due_at' => 'immutable_datetime',
+            'anonymized_at' => 'immutable_datetime',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
     public function canAccessAdministration(): bool
     {
-        return $this->is_admin && $this->hasVerifiedEmail() && $this->hasEnabledTwoFactorAuthentication();
+        return $this->accountAvailable() && $this->is_admin && $this->hasVerifiedEmail() && $this->hasEnabledTwoFactorAuthentication();
+    }
+
+    public function accountAvailable(): bool
+    {
+        return $this->deletion_requested_at === null && $this->anonymized_at === null;
+    }
+
+    public function deletionCancellable(): bool
+    {
+        return $this->anonymized_at === null && $this->deletion_requested_at !== null && $this->deletion_due_at?->isFuture() === true;
     }
 }

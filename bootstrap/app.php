@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\RestrictDeletingAccount;
+use App\Http\Middleware\SerializeAccountIdentityChanges;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         then: fn () => Route::group([], base_path('routes/oauth.php')),
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->appendToGroup('web', [
+            SerializeAccountIdentityChanges::class,
+            RestrictDeletingAccount::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // One-time credentials must never be retained as old form input.

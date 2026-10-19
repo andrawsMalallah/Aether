@@ -28,7 +28,7 @@ class AccountExportReady extends Notification implements ShouldBeEncrypted, Shou
 
     public function shouldSend(object $notifiable, string $channel): bool
     {
-        return $notifiable instanceof User && $notifiable->hasVerifiedEmail()
+        return $notifiable instanceof User && $notifiable->accountAvailable() && $notifiable->hasVerifiedEmail()
             && AccountExport::whereKey($this->exportId)->where('user_id', $notifiable->id)
                 ->whereIn('status', [AccountExportStatus::Ready, AccountExportStatus::ReadyToNotify])->where('expires_at', '>', now())->exists();
     }

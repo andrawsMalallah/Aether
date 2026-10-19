@@ -8,6 +8,7 @@
             <h2 id="export-title">Account data</h2>
             <p>Prepare a private copy of your Aether account data.</p>
             <a href="{{ route('account.export.index') }}">Export account data</a>
+            <p><a href="{{ route('account.deletion.show') }}">Delete account</a></p>
         </section>
         <section class="settings-section" aria-labelledby="connected-apps-title">
             <h2 id="connected-apps-title">Connected apps</h2>

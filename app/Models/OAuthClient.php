@@ -51,7 +51,7 @@ class OAuthClient extends Client
 
     public function acceptsUser(User $user): bool
     {
-        return ! $this->revoked && $user->hasVerifiedEmail() && match ($this->status) {
+        return ! $this->revoked && $user->accountAvailable() && $user->hasVerifiedEmail() && match ($this->status) {
             OAuthClientStatus::Live => true,
             OAuthClientStatus::Testing => $this->owner_type === $user->getMorphClass()
                 && (string) $this->owner_id === (string) $user->getKey(),

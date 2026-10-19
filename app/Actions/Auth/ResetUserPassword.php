@@ -16,6 +16,8 @@ class ResetUserPassword
     {
         // The account change, consumed broker link and audit record succeed together.
         return DB::transaction(fn (): string => Password::broker()->reset($attributes, function (User $user, string $password): void {
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user->accountAvailable(), 403);
             $user->forceFill([
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),

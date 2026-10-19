@@ -4,6 +4,7 @@ namespace App\Services\OAuth;
 
 use App\Enums\OAuthAuditEvent;
 use App\Models\AuditLog;
+use App\Models\User;
 use Laravel\Passport\Bridge\RefreshTokenRepository as PassportRefreshTokenRepository;
 use Laravel\Passport\Passport;
 
@@ -11,6 +12,14 @@ class RefreshTokenRepository extends PassportRefreshTokenRepository
 {
     public function isRefreshTokenRevoked(string $tokenId): bool
     {
+        $accessId = Passport::refreshToken()->newQuery()->whereKey($tokenId)->value('access_token_id');
+        $ownerId = $accessId === null ? null : Passport::token()->newQuery()->whereKey($accessId)->value('user_id');
+        if ($ownerId !== null) {
+            $owner = User::whereKey($ownerId)->lockForUpdate()->first();
+            if (! $owner?->accountAvailable()) {
+                return true;
+            }
+        }
         $refresh = Passport::refreshToken()->newQuery()->whereKey($tokenId)->lockForUpdate()->first();
         if (! $refresh) {
             return true;

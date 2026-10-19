@@ -25,6 +25,7 @@ class CompleteConsent
 
         return DB::transaction(function () use ($authorization, $user, $approved, $response): ResponseInterface {
             $client = OAuthClient::query()->whereKey($authorization->getClient()->getIdentifier())->lockForUpdate()->firstOrFail();
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             Gate::forUser($user)->authorize('authorize', $client);
             $authorization->setAuthorizationApproved($approved);
             $result = app(AuthorizationServer::class)->completeAuthorizationRequest($authorization, $response);

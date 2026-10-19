@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\AccountDeletionController;
 use App\Http\Controllers\Account\AccountExportController;
 use App\Http\Controllers\Account\ConnectedAppsController;
 use App\Http\Controllers\Account\DeveloperController;
@@ -83,9 +84,13 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::middleware(['auth', 'verified'])->prefix('account')->name('account.')->group(function (): void {
+    Route::get('/deletion/pending', [AccountDeletionController::class, 'pending'])->name('deletion.pending');
+    Route::post('/deletion/cancel', [AccountDeletionController::class, 'cancel'])->middleware('throttle:account-changes')->block(10, 5)->name('deletion.cancel');
     Route::get('/developer', [DeveloperController::class, 'show'])->name('developer');
     Route::post('/developer/enable', [DeveloperController::class, 'enable'])->middleware('throttle:account-changes')->name('developer.enable');
     Route::middleware('password.confirm:password.confirm,300')->group(function (): void {
+        Route::get('/deletion', [AccountDeletionController::class, 'show'])->name('deletion.show');
+        Route::post('/deletion', [AccountDeletionController::class, 'store'])->middleware('throttle:account-changes')->block(10, 5)->name('deletion.store');
         Route::get('/export', [AccountExportController::class, 'index'])->name('export.index');
         Route::post('/export', [AccountExportController::class, 'store'])->middleware('throttle:account-changes')->name('export.store');
         Route::get('/export/{accountExport}/download', [AccountExportController::class, 'download'])->whereUuid('accountExport')->name('export.download');

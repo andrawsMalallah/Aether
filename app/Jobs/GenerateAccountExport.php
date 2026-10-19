@@ -51,6 +51,10 @@ class GenerateAccountExport implements ShouldBeEncrypted, ShouldQueue
         $writing = false;
         try {
             $user = DB::transaction(function () use ($export, $disk, $writer, &$writing): ?User {
+                // Match deletion's user-before-export lock order; never regenerate erased data.
+                $owner = User::select(['id', 'name', 'email', 'email_verified_at', 'pending_email', 'pending_email_requested_at',
+                    'two_factor_confirmed_at', 'is_developer', 'is_admin', 'avatar_path', 'created_at', 'updated_at',
+                    'deletion_requested_at', 'deletion_due_at', 'anonymized_at'])->whereKey($export->user_id)->lockForUpdate()->first();
                 // One row lock serializes duplicate delivery, retries and expiry cleanup.
                 $locked = AccountExport::whereKey($export->id)->lockForUpdate()->firstOrFail();
                 if (! in_array($locked->status, [AccountExportStatus::Pending, AccountExportStatus::ReadyToNotify], true)) {
@@ -65,8 +69,6 @@ class GenerateAccountExport implements ShouldBeEncrypted, ShouldQueue
                     return null;
                 }
                 // Profile generation never selects credential hashes or second-factor secrets.
-                $owner = User::select(['id', 'name', 'email', 'email_verified_at', 'pending_email', 'pending_email_requested_at',
-                    'two_factor_confirmed_at', 'is_developer', 'is_admin', 'avatar_path', 'created_at', 'updated_at'])->find($locked->user_id);
                 if ($owner === null || Gate::forUser($owner)->denies('create', AccountExport::class)) {
                     $locked->update(['status' => AccountExportStatus::Failed]);
 

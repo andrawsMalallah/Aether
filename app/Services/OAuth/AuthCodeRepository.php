@@ -4,6 +4,7 @@ namespace App\Services\OAuth;
 
 use App\Enums\OAuthAuditEvent;
 use App\Models\AuditLog;
+use App\Models\User;
 use Laravel\Passport\Bridge\AuthCodeRepository as PassportAuthCodeRepository;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
@@ -22,6 +23,13 @@ class AuthCodeRepository extends PassportAuthCodeRepository
 
     public function isAuthCodeRevoked(string $codeId): bool
     {
+        $ownerId = Passport::authCode()->newQuery()->whereKey($codeId)->value('user_id');
+        if ($ownerId !== null) {
+            $owner = User::whereKey($ownerId)->lockForUpdate()->first();
+            if (! $owner?->accountAvailable()) {
+                return true;
+            }
+        }
         // Token exchanges hold this row lock until token creation and consumption commit.
         $code = Passport::authCode()->newQuery()->whereKey($codeId)->lockForUpdate()->first();
         if (! $code || $code->client_id !== app(TokenContext::class)->clientId) {

@@ -58,7 +58,7 @@ class AuthorizationCodeGrant extends AuthCodeGrant
     public function completeAuthorizationRequest(AuthorizationRequestInterface $authorizationRequest): ResponseTypeInterface
     {
         $client = OAuthClient::query()->find($authorizationRequest->getClient()->getIdentifier());
-        $user = User::query()->find($authorizationRequest->getUser()?->getIdentifier());
+        $user = User::query()->lockForUpdate()->find($authorizationRequest->getUser()?->getIdentifier());
         if (! $client || ! $user || Gate::forUser($user)->denies('authorize', $client)) {
             throw OAuthServerException::accessDenied();
         }

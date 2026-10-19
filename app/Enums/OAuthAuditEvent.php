@@ -5,6 +5,9 @@ namespace App\Enums;
 enum OAuthAuditEvent: string
 {
     case AccountExported = 'account.exported';
+    case AccountDeletionRequested = 'account.deletion_requested';
+    case AccountDeletionCancelled = 'account.deletion_cancelled';
+    case AccountDeleted = 'account.deleted';
     case LoginSucceeded = 'login.success';
     case LoginFailed = 'login.failed';
     case LoginLockedOut = 'login.locked_out';
