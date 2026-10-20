@@ -34,6 +34,7 @@ return [
 
         'sqlite' => [
             'driver' => 'sqlite',
+            'mask_bindings_in_exception_messages' => true,
             'url' => env('DB_URL'),
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
@@ -46,6 +47,7 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
+            'mask_bindings_in_exception_messages' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
@@ -66,6 +68,7 @@ return [
 
         'mariadb' => [
             'driver' => 'mariadb',
+            'mask_bindings_in_exception_messages' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
@@ -86,6 +89,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
+            'mask_bindings_in_exception_messages' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
@@ -101,6 +105,7 @@ return [
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
+            'mask_bindings_in_exception_messages' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', 'localhost'),
             'port' => env('DB_PORT', '1433'),

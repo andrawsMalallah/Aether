@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Applies to newly issued cookies; existing sign-ins are not revoked.
+            'remember' => 60 * 24 * 30,
         ],
         'api' => [
             'driver' => 'passport',

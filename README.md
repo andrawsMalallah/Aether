@@ -221,9 +221,35 @@ The new `account_exports` tracking migration is required. A local migration was 
 
 Manual desktop/mobile check: visit `/account/export`, confirm your password, select the confirmation checkbox using Tab/Space and request an export. Check Mailpit for the ready email, follow Review account exports, download the JSON and confirm its sections describe your account. A repeated immediate request should show the waiting-period message; a different signed-in account must not download your link. Automated checks: `php vendor/bin/pest tests/Feature/AccountExportTest.php`. Keep downloaded copies private.
 
+### Browser response protection
+
+A shared global middleware applies `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a same-origin Content Security Policy to application responses, including errors and protocol preflights. Scripts, styles, images, fonts and connections are same-origin only; framing, objects, base URLs and inline script/style attributes are blocked. HSTS and `form-action` remain separate rollout decisions. OAuth privacy/cache/CORS and per-route caching are preserved.
+
+Aether uses built assets in every environment, including local Herd. Run `npm run build` after asset changes; `npm run dev` hot reload is deliberately not used by Aether pages. Existing hot files are ignored. Herd-injected inline tooling remains blocked and can generate local CSP console warnings. Error pages use the existing Aether components without inline styles or exception details.
+
+Checks: `php vendor/bin/pest tests/Feature/Security/SecurityHeadersTest.php`. Local Chrome verification on an explicitly approved disposable account/client passed fresh login, cross-origin consent Allow/Deny, saved-consent returning SSO, private avatar/logo, authenticator QR and protected JSON download at desktop/320px. The callback was handled by a verification-only Chrome interceptor; no external client service or additional browser engine is claimed. Fixture credentials were invalidated and its client revoked afterward. Manual owner review: open `/login` and a nonexistent page on desktop/mobile, then exercise your existing application's sign-in and inspect account/security pages. HSTS, deployed-origin verification and whole Phase 8 sign-off remain separate.
+
+### Safe diagnostics
+
+Application diagnostic channels preserve severity and exception class/file/line plus up to twenty argument-free frames. They intentionally omit arbitrary log messages/context, exception messages/previous chains, SQL/bindings and Laravel Context extras. Laravel log events, emergency fallback, console exception rendering, worker JSON and database-UUID failed-job exceptions use this boundary. Generic log messages become `Application diagnostic.`; richer operational events need a separately reviewed allowlist. Framework upgrades must rerun the console/worker/logging compatibility tests.
+
+All queued account notifications now encrypt command payloads, including password-reset tokens. SQL exception binding masking is enabled as defense in depth. Existing queued/failed records and logs are unchanged. Failed-job retries retain their original encrypted command; supported failure storage is `database-uuids` or disabled storage. Other failure backends fail closed until their adapters are reviewed.
+
+SMTP is the mail default and failover no longer falls back to body logging. Selecting a `log` mail transport outside local/testing fails, including nested failovers. Explicit local/testing log mail uses the separate `local-mail` channel at `storage/logs/local-mail.log` (ignores `MAIL_LOG_CHANNEL`); it intentionally contains complete email bodies and must be treated as sensitive. Prefer Mailpit. No environment file was changed and running workers were not restarted.
+
+Automated checks: `php vendor/bin/pest tests/Feature/Security/SafeDiagnosticsTest.php`. Manual review on desktop at `/forgot-password`: request a reset for your disposable account, confirm Mailpit receives it, and complete the reset. At `/account/profile`, check an email change and both notices using disposable addresses. Do not copy credentials or links into diagnostics. Actual worker/mail readiness and deployed proxy/CDN/APM/PHP logs require separate verification; those systems can log outside Laravel's boundaries.
+
+### Session policy
+
+Sessions retain the existing 120-minute idle default. Newly issued Remember me cookies last 30 days, configured through Laravel's `auth.guards.web.remember` option in minutes. A valid remember cookie can restore sign-in after the active session expires; it does not satisfy recent password confirmation. The browser enforces the cookie expiry, so this is not a server-enforced absolute 30-day account login limit.
+
+Existing sessions and previously issued cookies keep working until their own expiry or normal revocation; the change does not rotate existing credentials. The separate 90-day sign-in alert marker is unchanged. No environment, cookie transport, HSTS or trusted-proxy setting was changed. Rebuild the configuration cache during an approved production deployment.
+
+Manual check at `/login`: sign in with Remember me, inspect only the remember cookie's expiry in browser developer tools (about 30 days), then visit `/account/security` and confirm it still requires your password. Existing revocation controls remain available at `/account/sessions`. Automated checks: `php vendor/bin/pest tests/Feature/Security/SessionPolicyTest.php`.
+
 ### Account deletion
 
-Phase 7's agreed local scope was verified complete on 2026-10-19: sessions/Connected apps, browser alerts, audit catalog, export and deletion. This is not production-readiness sign-off. Current session configuration defaults to 120 minutes idle; the existing framework remember-me cookie lasts up to 400 days and remains subject to revocation. Production session/remember duration, full browser security headers, retention, monitoring and key/recovery operations are the next hardening review.
+Phase 7's agreed local scope was verified complete on 2026-10-19: sessions/Connected apps, browser alerts, audit catalog, export and deletion. This is not production-readiness sign-off. Phase 8 has since added browser security headers and the approved 120-minute idle / 30-day newly issued remember-cookie policy. Deployment transport/cookies, retention, monitoring and key/recovery operations remain separate hardening work.
 
 Security → Delete account (`/account/deletion`) requires a verified account, password confirmation within five minutes and explicit confirmation. Download and save any export first. Administrator accounts cannot self-delete. Delete every owned application, including suspended applications, before requesting deletion; retained already-deleted app records do not block it. Ownership transfer is outside this feature.
 

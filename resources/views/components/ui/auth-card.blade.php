@@ -1,11 +1,13 @@
-@props(['title', 'description'])
+@props(['title', 'description', 'showStatus' => true])
 <x-layout :title="$title">
     <main id="main-content" class="auth-shell">
         <section class="auth-card" aria-labelledby="auth-title">
             <x-ui.logo />
             <h1 id="auth-title">{{ $title }}</h1>
             <p class="auth-card__description">{{ $description }}</p>
-            <x-ui.status />
+            @if ($showStatus)
+                <x-ui.status />
+            @endif
             {{ $slot }}
             <footer class="auth-card__footer">
                 <a href="{{ route('terms') }}">Terms of service</a>
