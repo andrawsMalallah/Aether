@@ -89,6 +89,8 @@ it('completes secretless PKCE and rotating refresh for a portal registered clien
     $replacement = $this->postJson('/oauth/token', $refresh)->assertOk()->json();
     expect($replacement['refresh_token'])->not->toBe($tokens['refresh_token']);
     $this->postJson('/oauth/token', $refresh)->assertStatus(400);
+    expect(oauthBearerWorks($replacement['access_token']))->toBeFalse();
+    $this->postJson('/oauth/token', [...$refresh, 'refresh_token' => $replacement['refresh_token']])->assertStatus(400);
     // Reusing a refresh revokes its lineage; obtain a fresh pair for logout verification.
     $fresh = $this->postJson('/oauth/token', oauthExchange($client, oauthCode($this, $owner, $client)))->assertOk()->json();
     $this->post('/oauth/revoke', ['client_id' => $client->id, 'token' => $fresh['refresh_token']])->assertOk();

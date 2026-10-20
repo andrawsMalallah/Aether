@@ -23,23 +23,33 @@ class RevokeToken
     {
         $clientId = $data['client_id'] ?? $request->getUser();
         $secret = $data['client_secret'] ?? $request->getPassword();
-        $client = is_string($clientId) ? OAuthClient::query()->find($clientId) : null;
-        if (! $client || ($client->confidential() && (! is_string($secret) || ! Hash::check($secret, $client->secret)))) {
-            throw OAuthServerException::invalidClient((new PsrHttpFactory)->createRequest($request));
-        }
-        Gate::authorize('revokeToken', [$client, $clientId]);
-        $refresh = $this->reader->refresh($data['token']);
-        $accessId = $refresh === null ? $this->reader->access($data['token']) : null;
-        DB::transaction(function () use ($refresh, $accessId, $client): void {
-            if ($refresh !== null && $refresh['client_id'] === $client->getKey()) {
+        DB::transaction(function () use ($request, $data, $clientId, $secret): void {
+            // Serialize with issuance and secret rotation, then authenticate the current
+            // locked client. Unavailable clients must still be able to revoke credentials.
+            $client = is_string($clientId) ? OAuthClient::query()->whereKey($clientId)->lockForUpdate()->first() : null;
+            if (! $client || ($client->confidential() && (! is_string($secret) || ! Hash::check($secret, $client->secret)))) {
+                throw OAuthServerException::invalidClient((new PsrHttpFactory)->createRequest($request));
+            }
+            Gate::authorize('revokeToken', [$client, $clientId]);
+            $refresh = $this->reader->refresh($data['token']);
+            $accessId = $refresh === null ? $this->reader->access($data['token']) : null;
+            if ($refresh !== null) {
+                if ($refresh['client_id'] !== $client->getKey()) {
+                    return;
+                }
                 $storedRefresh = Passport::refreshToken()->newQuery()->whereKey($refresh['refresh_token_id'])->lockForUpdate()->first();
                 $accessId = $storedRefresh?->access_token_id;
             }
-            $access = $accessId !== null ? Passport::token()->newQuery()->whereKey($accessId)->where('client_id', $client->getKey())->lockForUpdate()->first() : null;
+            // Resolve ownership without an access lock. Both token forms must acquire
+            // refresh locks first to avoid a cycle with refresh/account-wide revocation.
+            $access = $accessId !== null ? Passport::token()->newQuery()->whereKey($accessId)->where('client_id', $client->getKey())->first() : null;
             if ($access) {
                 Passport::refreshToken()->newQuery()->where('access_token_id', $access->getKey())->update(['revoked' => true]);
-                $access->revoke();
-                AuditLog::query()->create(['user_id' => $access->user_id, 'client_id' => $client->getKey(), 'event' => OAuthAuditEvent::TokenRevoked]);
+                $access = Passport::token()->newQuery()->whereKey($access->getKey())->where('client_id', $client->getKey())->lockForUpdate()->first();
+                if ($access) {
+                    $access->revoke();
+                    AuditLog::query()->create(['user_id' => $access->user_id, 'client_id' => $client->getKey(), 'event' => OAuthAuditEvent::TokenRevoked]);
+                }
             }
         });
     }

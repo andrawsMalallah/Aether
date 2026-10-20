@@ -41,6 +41,8 @@ it('completes public PKCE consent code token and rotating refresh with correct l
     expect(oauthBearerWorks($oldAccess))->toBeFalse();
     expect(oauthBearerWorks($response->json('access_token')))->toBeTrue();
     $this->postJson('/oauth/token', ['grant_type' => 'refresh_token', 'client_id' => $client->getKey(), 'refresh_token' => $oldRefresh])->assertStatus(400)->assertJsonPath('error', 'invalid_grant');
+    expect(oauthBearerWorks($response->json('access_token')))->toBeFalse();
+    $this->postJson('/oauth/token', ['grant_type' => 'refresh_token', 'client_id' => $client->getKey(), 'refresh_token' => $response->json('refresh_token')])->assertStatus(400);
     expect(AuditLog::query()->where('event', 'refresh.replayed')->exists())->toBeTrue();
     expect(Consent::query()->first()->scopes)->toBe(['openid', 'email']);
 });
