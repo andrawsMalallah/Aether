@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\LoginLockoutStage;
 use App\Services\Authentication\AuditLoginLockout;
 use App\Services\Authentication\TwoFactorAuthenticationProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -25,7 +26,8 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::verifyEmailView(fn (): View => view('auth.verify-email'));
         Fortify::twoFactorChallengeView(fn (): View => view('auth.two-factor-challenge'));
         RateLimiter::for('two-factor', fn (Request $request): array => [
-            Limit::perMinute(5)->by('two-factor:user:'.(string) $request->session()->get('login.id', 'guest'))->response(app(AuditLoginLockout::class)->respond(...)),
+            Limit::perMinute(5)->by('two-factor:user:'.(string) $request->session()->get('login.id', 'guest'))
+                ->response(fn (Request $request, array $headers) => app(AuditLoginLockout::class)->respond($request, $headers, LoginLockoutStage::TwoFactor)),
             Limit::perMinute(30)->by('two-factor:ip:'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
         ]);
         RateLimiter::for('password-confirmation', fn (Request $request): Limit => Limit::perMinute(5)->by('password-confirmation:'.$request->user()?->getAuthIdentifier()));
@@ -34,7 +36,8 @@ class FortifyServiceProvider extends ServiceProvider
             $email = is_string($request->input('email')) ? strtolower($request->input('email')) : '';
 
             return [
-                Limit::perMinute(5)->by('login:email:'.$email.':'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
+                Limit::perMinute(5)->by('login:email:'.$email.':'.$request->ip())
+                    ->response(fn (Request $request, array $headers) => app(AuditLoginLockout::class)->respond($request, $headers, LoginLockoutStage::Password)),
                 Limit::perMinute(30)->by('login:ip:'.$request->ip())->response(app(AuditLoginLockout::class)->respond(...)),
             ];
         });

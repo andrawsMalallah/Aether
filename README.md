@@ -239,6 +239,16 @@ SMTP is the mail default and failover no longer falls back to body logging. Sele
 
 Automated checks: `php vendor/bin/pest tests/Feature/Security/SafeDiagnosticsTest.php`. Manual review on desktop at `/forgot-password`: request a reset for your disposable account, confirm Mailpit receives it, and complete the reset. At `/account/profile`, check an email change and both notices using disposable addresses. Do not copy credentials or links into diagnostics. Actual worker/mail readiness and deployed proxy/CDN/APM/PHP logs require separate verification; those systems can log outside Laravel's boundaries.
 
+### Lockout alerts
+
+Account-specific password and two-factor lockouts can send an encrypted queued email to the verified, available account. IP-only limits remain audit-only. The existing throttle counts sign-in requests, so the message describes temporarily limited attempts without claiming a successful sign-in or a proven attack. It includes UTC time and a normal account-security link; no IP/browser details, passwords, codes or credential links.
+
+Known and unknown valid addresses take the same added request path: no extra account lookup, one encrypted preparation job per normalized identifier per minute, dispatched after the login transaction commits. The worker resolves eligibility and uses a shared atomic 24-hour account claim across IPs and both stages. Repeated requests still produce existing audit events and the same 429/Retry-After behavior. Notification queue/cache failures do not replace that response. Delivery rechecks the verified address and account availability; work older than ten minutes is skipped.
+
+Run the existing asynchronous queue worker with a shared database/Redis/Memcached cache. Sync/deferred/background/null queue drivers are not used for this public trigger; process-local caches are rejected outside tests. Cache eviction/reset can reset deduplication, and SMTP retries remain at-least-once delivery. A crash after claiming but before enqueueing can suppress an alert until the claim expires; this is best-effort security email, not a durable delivery ledger. No schema or environment change is included.
+
+Manual review on desktop using a disposable verified account at `/login`: submit five incorrect passwords, then a sixth attempt, and check the 429 plus one Mailpit alert after the worker processes both stages. Repeat attempts or trigger a two-factor challenge lockout within 24 hours: no second alert should be scheduled for that account. Preserve your normal signed-in browser. Never use an administrator/real account for repeated-failure testing. Automated checks: `php vendor/bin/pest tests/Feature/LoginLockoutAlertTest.php`.
+
 ### Session policy
 
 Sessions retain the existing 120-minute idle default. Newly issued Remember me cookies last 30 days, configured through Laravel's `auth.guards.web.remember` option in minutes. A valid remember cookie can restore sign-in after the active session expires; it does not satisfy recent password confirmation. The browser enforces the cookie expiry, so this is not a server-enforced absolute 30-day account login limit.
