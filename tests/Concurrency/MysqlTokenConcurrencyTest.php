@@ -27,6 +27,8 @@ use Tests\Support\Concurrency\Bootstrap;
 use Tests\Support\Concurrency\WorkerProcess;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
+require dirname(__DIR__).'/Support/Concurrency/Lifecycle.php';
+require dirname(__DIR__).'/Support/Concurrency/Rollback.php';
 ini_set('display_errors', '0');
 ini_set('log_errors', '0');
 
@@ -288,6 +290,14 @@ try {
         $allowedCases[] = $case.'-forward';
         $allowedCases[] = $case.'-reverse';
     }
+    foreach (['rotate', 'disconnect', 'suspend', 'delete'] as $lifecycle) {
+        foreach (['code', 'refresh'] as $issuance) {
+            foreach (['issuance-first', 'lifecycle-first'] as $ordering) {
+                $allowedCases[] = $issuance.'-'.$lifecycle.'-'.$ordering;
+                $allowedCases[] = 'rollback-'.$issuance.'-'.$lifecycle.'-'.$ordering;
+            }
+        }
+    }
     if (PHP_SAPI !== 'cli' || isset($options['case']) && ! in_array($options['case'], $allowedCases, true)) {
         throw new RuntimeException('CLI execution and a recognized case are required.');
     }
@@ -346,6 +356,32 @@ try {
                 echo json_encode(['starting' => $name], JSON_THROW_ON_ERROR).PHP_EOL;
                 $report['results'][] = concurrencyScenario($configuration, $name, $first, $second, true, $reverse);
                 echo json_encode(end($report['results']), JSON_THROW_ON_ERROR).PHP_EOL;
+            }
+        }
+        foreach (['rotate', 'disconnect', 'suspend', 'delete'] as $lifecycle) {
+            foreach (['code', 'refresh'] as $issuance) {
+                foreach ([false, true] as $lifecycleFirst) {
+                    $name = $issuance.'-'.$lifecycle.($lifecycleFirst ? '-lifecycle-first' : '-issuance-first');
+                    if (isset($options['case']) && $options['case'] !== $name) {
+                        continue;
+                    }
+                    echo json_encode(['starting' => $name], JSON_THROW_ON_ERROR).PHP_EOL;
+                    $report['results'][] = lifecycleScenario($configuration, $name, $issuance, $lifecycle, $lifecycleFirst);
+                    echo json_encode(end($report['results']), JSON_THROW_ON_ERROR).PHP_EOL;
+                }
+            }
+        }
+        foreach (['rotate', 'disconnect', 'suspend', 'delete'] as $lifecycle) {
+            foreach (['code', 'refresh'] as $issuance) {
+                foreach ([false, true] as $lifecycleFirst) {
+                    $name = 'rollback-'.$issuance.'-'.$lifecycle.($lifecycleFirst ? '-lifecycle-first' : '-issuance-first');
+                    if (isset($options['case']) && $options['case'] !== $name) {
+                        continue;
+                    }
+                    echo json_encode(['starting' => $name], JSON_THROW_ON_ERROR).PHP_EOL;
+                    $report['results'][] = rollbackScenario($configuration, $name, $issuance, $lifecycle, $lifecycleFirst);
+                    echo json_encode(end($report['results']), JSON_THROW_ON_ERROR).PHP_EOL;
+                }
             }
         }
     }

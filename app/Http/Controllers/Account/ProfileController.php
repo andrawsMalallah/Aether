@@ -11,11 +11,11 @@ use App\Http\Requests\Account\ChangeEmailRequest;
 use App\Http\Requests\Account\ChangePasswordRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
 use App\Models\User;
+use App\Services\PrivateStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
@@ -68,8 +68,8 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
         Gate::authorize('view', $user);
-        abort_unless($user->avatar_path !== null && Storage::disk('local')->exists($user->avatar_path), 404);
+        abort_unless($user->avatar_path !== null && PrivateStorage::disk()->exists($user->avatar_path), 404);
 
-        return Storage::disk('local')->response($user->avatar_path, null, ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+        return PrivateStorage::response($user->avatar_path, PrivateStorage::disk()->mimeType($user->avatar_path) ?: 'application/octet-stream', ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 }

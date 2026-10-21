@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Consent;
 use App\Models\OAuthClient;
 use App\Models\User;
+use App\Services\PrivateStorage;
 use App\Services\RevokeAccountAccess;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Passport\Passport;
 use RuntimeException;
@@ -53,13 +53,13 @@ class FinalizeAccountDeletion implements ShouldBeEncrypted, ShouldQueue
             AccountExport::where('user_id', $user->id)->orderBy('id')->chunkById(250, function (Collection $exports): void {
                 foreach ($exports as $export) {
                     $locked = AccountExport::whereKey($export->id)->lockForUpdate()->firstOrFail();
-                    if (! Storage::disk('local')->delete([$locked->relativePath(), $locked->relativePath().'.partial'])) {
+                    if (! PrivateStorage::disk()->delete([$locked->relativePath(), $locked->relativePath().'.partial'])) {
                         throw new RuntimeException('Account export cleanup failed.');
                     }
                     $locked->delete();
                 }
             });
-            if ($user->avatar_path !== null && ! Storage::disk('local')->delete($user->avatar_path)) {
+            if ($user->avatar_path !== null && ! PrivateStorage::disk()->delete($user->avatar_path)) {
                 throw new RuntimeException('Account avatar cleanup failed.');
             }
             Passport::token()->newQuery()->where('user_id', $user->id)->select('id')->chunkById(250, function (Collection $tokens): void {

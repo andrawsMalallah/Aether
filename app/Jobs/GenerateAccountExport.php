@@ -9,13 +9,13 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Notifications\AccountExportReady;
 use App\Services\AccountExportWriter;
+use App\Services\PrivateStorage;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -47,7 +47,7 @@ class GenerateAccountExport implements ShouldBeEncrypted, ShouldQueue
         if ($export === null) {
             return;
         }
-        $disk = Storage::disk('local');
+        $disk = PrivateStorage::disk();
         $writing = false;
         try {
             $user = DB::transaction(function () use ($export, $disk, $writer, &$writing): ?User {
@@ -77,21 +77,21 @@ class GenerateAccountExport implements ShouldBeEncrypted, ShouldQueue
                 if ($locked->status === AccountExportStatus::ReadyToNotify) {
                     return $owner;
                 }
-                if (! $disk->makeDirectory('account-exports')) {
-                    throw new RuntimeException('Account export storage is unavailable.');
-                }
-                $writing = true;
-                $stream = fopen($disk->path($locked->relativePath().'.partial'), 'wb');
+                $stream = tmpfile();
                 if ($stream === false) {
                     throw new RuntimeException('Account export storage is unavailable.');
                 }
                 try {
                     $writer->write($owner, $stream);
+                    if (! rewind($stream)) {
+                        throw new RuntimeException('Account export could not be completed.');
+                    }
+                    $writing = true;
+                    if (! $disk->put($locked->relativePath(), $stream, ['visibility' => 'private'])) {
+                        throw new RuntimeException('Account export could not be completed.');
+                    }
                 } finally {
                     fclose($stream);
-                }
-                if (! $disk->move($locked->relativePath().'.partial', $locked->relativePath())) {
-                    throw new RuntimeException('Account export could not be completed.');
                 }
                 $locked->update(['status' => AccountExportStatus::ReadyToNotify, 'completed_at' => now(), 'expires_at' => now()->addDay()]);
                 AuditLog::create(['user_id' => $owner->id, 'event' => OAuthAuditEvent::AccountExported]);
@@ -119,7 +119,9 @@ class GenerateAccountExport implements ShouldBeEncrypted, ShouldQueue
         DB::transaction(function (): void {
             $export = AccountExport::whereKey($this->exportId)->lockForUpdate()->first();
             if ($export !== null && $export->status === AccountExportStatus::Pending) {
-                Storage::disk('local')->delete([$export->relativePath(), $export->relativePath().'.partial']);
+                if (! PrivateStorage::disk()->delete([$export->relativePath(), $export->relativePath().'.partial'])) {
+                    throw new RuntimeException('Account export cleanup failed.');
+                }
                 $export->update(['status' => AccountExportStatus::Failed]);
             }
         });

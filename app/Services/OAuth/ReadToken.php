@@ -12,7 +12,6 @@ use Lcobucci\JWT\Token\Parser;
 use Lcobucci\JWT\UnencryptedToken;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Lcobucci\JWT\Validation\Validator;
-use League\OAuth2\Server\CryptKey;
 use League\OAuth2\Server\CryptTrait;
 
 class ReadToken
@@ -39,16 +38,21 @@ class ReadToken
 
     public function access(string $token): ?string
     {
-        $key = str_replace('\\n', "\n", config('passport.public_key') ?? '');
-        $publicKey = new CryptKey($key ?: 'file://'.Passport::keyPath('oauth-public.key'), null, Passport::$validateKeyPermissions);
+        $keys = app(OidcKeys::class)->publicKeys();
         try {
             $parsed = (new Parser(new JoseEncoder))->parse($token);
-            if (! $parsed instanceof UnencryptedToken || ! (new Validator)->validate($parsed, new SignedWith(new Sha256, InMemory::plainText($publicKey->getKeyContents())))) {
+            if (! $parsed instanceof UnencryptedToken) {
                 return null;
             }
-            $identifier = $parsed->claims()->get('jti');
+            foreach ($keys as $pem) {
+                if ((new Validator)->validate($parsed, new SignedWith(new Sha256, InMemory::plainText($pem)))) {
+                    $identifier = $parsed->claims()->get('jti');
 
-            return is_string($identifier) ? $identifier : null;
+                    return is_string($identifier) ? $identifier : null;
+                }
+            }
+
+            return null;
         } catch (Exception) {
             return null;
         }

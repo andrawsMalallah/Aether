@@ -27,3 +27,8 @@ Artisan::command('accounts:finalize-deletions', function (): void {
 })->purpose('Queue final erasure for accounts whose deletion grace period has ended');
 
 Schedule::command('accounts:finalize-deletions')->hourly()->withoutOverlapping();
+
+Schedule::command('retention:prune --only=sessions --execute')->hourly()
+    ->when(fn (): bool => (bool) config('retention.scheduled_enabled'))->onOneServer()->withoutOverlapping(30);
+Schedule::command('retention:prune --only=audit --only=oauth --only=codes --only=resets --only=failed-jobs --execute')->dailyAt('03:20')
+    ->when(fn (): bool => (bool) config('retention.scheduled_enabled'))->onOneServer()->withoutOverlapping(30);

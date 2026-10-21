@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\StatefulGuard;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -19,6 +20,8 @@ use Laravel\Passport\Bridge;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\AuthorizationServer;
+use League\OAuth2\Server\CryptKey;
+use League\OAuth2\Server\ResourceServer;
 
 class OAuthServiceProvider extends ServiceProvider
 {
@@ -37,6 +40,19 @@ class OAuthServiceProvider extends ServiceProvider
         $this->app->bind(Bridge\AccessTokenRepository::class, OAuth\AccessTokenRepository::class);
         $this->app->bind(Bridge\AuthCodeRepository::class, OAuth\AuthCodeRepository::class);
         $this->app->bind(Bridge\RefreshTokenRepository::class, OAuth\RefreshTokenRepository::class);
+        Passport::encryptTokensUsing(fn (Encrypter $encrypter): string => app(OAuth\PayloadEncryptionKey::class)->resolve($encrypter));
+        $this->app->beforeResolving(AuthorizationServer::class, function (): void {
+            // Validate the complete active pair/ring before Passport can issue even a
+            // non-OIDC token; a bad public/private pairing must fail closed.
+            app(OAuth\OidcKeys::class)->publicKeys();
+        });
+        $this->app->singleton(ResourceServer::class, function (): ResourceServer {
+            $keys = app(OAuth\OidcKeys::class);
+            $repository = app(Bridge\AccessTokenRepository::class);
+
+            return new ResourceServer($repository, new CryptKey($keys->publicKey()->contents(), null, false),
+                new OAuth\TrustedBearerTokenValidator($repository, $keys));
+        });
         $this->app->when(AuthorizationController::class)->needs(StatefulGuard::class)->give(fn () => Auth::guard('web'));
         $this->app->extend(AuthorizationServer::class, function (AuthorizationServer $server): AuthorizationServer {
             $grant = new OAuth\AuthorizationCodeGrant(app(Bridge\AuthCodeRepository::class), app(Bridge\RefreshTokenRepository::class), new DateInterval('PT1M'));

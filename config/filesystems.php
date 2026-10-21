@@ -15,6 +15,8 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'private_disk' => env('AETHER_PRIVATE_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -29,6 +31,23 @@ return [
     */
 
     'disks' => [
+
+        'private_s3' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => env('AETHER_STORAGE_PREFIX', 'aether'),
+            'endpoint' => env('AWS_ENDPOINT') ?: null,
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'stream_reads' => true,
+            'throw' => true,
+            'report' => false,
+            'retries' => 0,
+            'http' => ['connect_timeout' => 3, 'timeout' => 15, 'read_timeout' => 15],
+        ],
 
         'local' => [
             'driver' => 'local',

@@ -16,6 +16,6 @@ class OidcMetadataController extends Controller
 
     public function keys(OidcKeys $keys): OidcResource
     {
-        return new OidcResource(['keys' => [$keys->jwk()]]);
+        return new OidcResource(['keys' => $keys->jwks()]);
     }
 }

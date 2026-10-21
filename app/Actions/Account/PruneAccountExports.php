@@ -4,8 +4,8 @@ namespace App\Actions\Account;
 
 use App\Enums\AccountExportStatus;
 use App\Models\AccountExport;
+use App\Services\PrivateStorage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class PruneAccountExports
 {
@@ -20,7 +20,7 @@ class PruneAccountExports
                         if ($export === null || $export->expires_at->isFuture() || $export->status === AccountExportStatus::Expired) {
                             return 0;
                         }
-                        if (! Storage::disk('local')->delete([$export->relativePath(), $export->relativePath().'.partial'])) {
+                        if (! PrivateStorage::disk()->delete([$export->relativePath(), $export->relativePath().'.partial'])) {
                             return 0;
                         }
                         $export->update(['status' => AccountExportStatus::Expired]);

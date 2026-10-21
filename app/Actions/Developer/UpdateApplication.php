@@ -6,6 +6,7 @@ use App\Enums\OAuthAppType;
 use App\Enums\OAuthAuditEvent;
 use App\Models\AuditLog;
 use App\Models\OAuthClient;
+use App\Services\PrivateStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,7 +21,7 @@ class UpdateApplication
             $client = OAuthClient::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
             Gate::authorize('update', $client);
             if (isset($data['logo'])) {
-                $logoPath = $data['logo']->store('oauth-client-logos', 'local');
+                $logoPath = $data['logo']->store('oauth-client-logos', PrivateStorage::name());
                 abort_if($logoPath === false, 500, 'The logo could not be stored. Please try again.');
                 // Retain previous private files; only the current database reference is served.
                 $client->logo_path = $logoPath;

@@ -3,8 +3,8 @@
 namespace App\Actions\Account;
 
 use App\Models\User;
+use App\Services\PrivateStorage;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class UpdateProfile
@@ -13,7 +13,7 @@ class UpdateProfile
     public function handle(User $user, array $attributes): void
     {
         $oldAvatar = $user->avatar_path;
-        $newAvatar = isset($attributes['avatar']) ? $attributes['avatar']->store('avatars', 'local') : null;
+        $newAvatar = isset($attributes['avatar']) ? $attributes['avatar']->store('avatars', PrivateStorage::name()) : null;
         if ($newAvatar === false) {
             abort(500, 'The avatar could not be stored. Please try again.');
         }
@@ -26,13 +26,13 @@ class UpdateProfile
             $user->save();
         } catch (Throwable $exception) {
             if ($newAvatar !== null) {
-                Storage::disk('local')->delete($newAvatar);
+                PrivateStorage::disk()->delete($newAvatar);
             }
             throw $exception;
         }
 
         if ($newAvatar !== null && $oldAvatar !== null) {
-            Storage::disk('local')->delete($oldAvatar);
+            PrivateStorage::disk()->delete($oldAvatar);
         }
     }
 }
