@@ -54,7 +54,7 @@ class PruneOAuthCredentials
                 return array_replace($empty, ['eligible' => 1, 'deleted' => $deleted]);
             }
             $family = DB::table('oauth_access_tokens');
-            if (is_string($current->auth_code_id) && $current->auth_code_id !== '' && $current->user_id !== null) {
+            if (is_string($current->auth_code_id) && trim($current->auth_code_id) !== '' && $current->user_id !== null) {
                 $family->where('auth_code_id', $current->auth_code_id)->where('client_id', $current->client_id)->where('user_id', $current->user_id);
             } elseif ($current->auth_code_id === null && $current->user_id === null && $client->hasGrantType('client_credentials')) {
                 $family->where('id', $current->id);

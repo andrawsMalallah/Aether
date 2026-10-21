@@ -68,7 +68,7 @@ it('rejects missing legacy lineage without grouping unrelated null families', fu
         ->assertStatus(400)->assertJsonPath('error', 'invalid_grant');
     expect(Passport::token()->newQuery()->count())->toBe($before)
         ->and(oauthBearerWorks($unrelated['access_token']))->toBeTrue();
-})->with([[null, false], ['', false], [null, true]]);
+})->with([[null, false], ['', false], [null, true], ['', true]]);
 
 it('revokes refresh and access rows beyond the family batch boundary', function (): void {
     $client = oauthClientFixture();

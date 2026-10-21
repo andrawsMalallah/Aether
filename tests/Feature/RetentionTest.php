@@ -123,9 +123,8 @@ it('preserves every ancestor while any family member has live recent or unknown 
     $successor = retentionCredential($pair['user'], $pair['client'], $pair['family']);
     $expiry = match ($protected) {
         'live' => now()->addDay(), 'recent' => now()->subDays(29), 'boundary' => now()->subDays(30), 'unknown' => null,
-        // Strict MySQL rejects zero dates on write; exercise the same fail-closed
-        // pre-epoch branch there while SQLite also covers legacy zero-date data.
-        'zero' => DB::getDriverName() === 'mysql' ? '1969-12-31 23:59:59' : '0000-00-00 00:00:00',
+        // PostgreSQL rejects zero dates; a valid pre-epoch date covers fail-closed expiry.
+        'zero' => '1969-12-31 23:59:59',
     };
     DB::table('oauth_refresh_tokens')->where('id', $successor['refresh'])->update(['expires_at' => $expiry]);
     app(PruneRetainedRecords::class)->handle([RetentionCategory::OAuth], true);
@@ -174,11 +173,12 @@ it('skips missing owners null expiry and ambiguous legacy lineage without deleti
         'client' => DB::table('oauth_clients')->where('id', $pair['client']->id)->delete(),
         'expiry' => DB::table('oauth_access_tokens')->where('id', $pair['access'])->update(['expires_at' => null]),
         'lineage' => DB::table('oauth_access_tokens')->where('id', $pair['access'])->update(['auth_code_id' => null]),
+        'blank-lineage' => DB::table('oauth_access_tokens')->where('id', $pair['access'])->update(['auth_code_id' => '']),
     };
     $report = app(PruneRetainedRecords::class)->handle([RetentionCategory::OAuth], true)['oauth'];
     expect($report['invalid'])->toBe(1)->and($report['deleted'])->toBe(0);
     expect(DB::table('oauth_refresh_tokens')->count())->toBe(1);
-})->with(['owner', 'client', 'expiry', 'lineage']);
+})->with(['owner', 'client', 'expiry', 'lineage', 'blank-lineage']);
 
 it('cleans unambiguous expired machine credentials but preserves their live refresh records', function (): void {
     $pair = retentionCredential();
@@ -194,12 +194,14 @@ it('cleans unambiguous expired machine credentials but preserves their live refr
 
 it('removes only old codes while retaining access lineage and recent revoked codes', function (): void {
     $pair = retentionCredential();
-    foreach (['old' => now()->subDays(31), 'recent' => now()->addMinute()] as $id => $expiry) {
+    $oldCodeId = str_repeat('a', 80);
+    $recentCodeId = str_repeat('b', 80);
+    foreach ([$oldCodeId => now()->subDays(31), $recentCodeId => now()->addMinute()] as $id => $expiry) {
         DB::table('oauth_auth_codes')->insert(['id' => $id, 'client_id' => $pair['client']->id, 'user_id' => $pair['user']->id,
             'scopes' => '[]', 'revoked' => true, 'expires_at' => $expiry]);
     }
     expect(app(PruneRetainedRecords::class)->handle([RetentionCategory::Codes], true)['codes']['deleted'])->toBe(1);
-    expect(DB::table('oauth_auth_codes')->pluck('id')->all())->toBe(['recent']);
+    expect(DB::table('oauth_auth_codes')->pluck('id')->all())->toBe([$recentCodeId]);
     expect(DB::table('oauth_access_tokens')->value('auth_code_id'))->toBe($pair['family']);
 });
 

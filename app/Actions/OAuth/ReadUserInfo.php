@@ -21,6 +21,11 @@ class ReadUserInfo
         if (! $userId || ! in_array('openid', $scopes, true)) {
             throw OAuthServerException::invalidScope('openid');
         }
+        // Machine tokens can carry their client UUID as subject; it is never a user ID.
+        if ((! is_string($userId) && ! is_int($userId))
+            || filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+            throw OAuthServerException::accessDenied();
+        }
         $user = User::query()->find($userId);
         if (! $user) {
             throw OAuthServerException::accessDenied();

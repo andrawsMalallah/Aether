@@ -9,6 +9,7 @@ use App\Services\OAuth\OidcMetadata;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
@@ -23,7 +24,7 @@ class IntrospectToken
     {
         $clientId = $data['client_id'] ?? $request->getUser();
         $secret = $data['client_secret'] ?? $request->getPassword();
-        $resource = is_string($clientId) ? OAuthClient::query()->find($clientId) : null;
+        $resource = is_string($clientId) && Str::isUuid($clientId) ? OAuthClient::query()->find($clientId) : null;
         if (! $resource || ! $resource->confidential() || ! is_string($secret)
             || ! is_string($resource->secret) || ! Hash::check($secret, $resource->secret)) {
             throw OAuthServerException::invalidClient((new PsrHttpFactory)->createRequest($request));

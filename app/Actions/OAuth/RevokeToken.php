@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
@@ -26,7 +27,7 @@ class RevokeToken
         DB::transaction(function () use ($request, $data, $clientId, $secret): void {
             // Serialize with issuance and secret rotation, then authenticate the current
             // locked client. Unavailable clients must still be able to revoke credentials.
-            $client = is_string($clientId) ? OAuthClient::query()->whereKey($clientId)->lockForUpdate()->first() : null;
+            $client = is_string($clientId) && Str::isUuid($clientId) ? OAuthClient::query()->whereKey($clientId)->lockForUpdate()->first() : null;
             if (! $client || ($client->confidential() && (! is_string($secret) || ! Hash::check($secret, $client->secret)))) {
                 throw OAuthServerException::invalidClient((new PsrHttpFactory)->createRequest($request));
             }

@@ -28,6 +28,9 @@ use Laravel\Fortify\Http\Controllers\EmailVerificationNotificationController;
 use Laravel\Fortify\Http\Controllers\EmailVerificationPromptController;
 use Laravel\Fortify\Http\Controllers\TwoFactorAuthenticatedSessionController;
 
+// Reject malformed identifiers before PostgreSQL UUID route-model lookups.
+Route::pattern('application', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
+
 Route::middleware(['auth', 'verified', RequireAdministrator::class])
     ->prefix('admin/users')->name('admin.users.')->group(function (): void {
         Route::get('/', [AdminUserController::class, 'index'])->name('index');

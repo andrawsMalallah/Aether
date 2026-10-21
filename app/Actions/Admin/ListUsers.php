@@ -22,7 +22,7 @@ class ListUsers
             // Search literal text, including SQL wildcard characters.
             $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
             $query->where(function (Builder $query) use ($pattern): void {
-                $query->whereRaw("name LIKE ? ESCAPE '!'", [$pattern])->orWhereRaw("email LIKE ? ESCAPE '!'", [$pattern]);
+                $query->whereRaw("name ILIKE ? ESCAPE '!'", [$pattern])->orWhereRaw("email ILIKE ? ESCAPE '!'", [$pattern]);
             });
         }
         match ($filters['role'] ?? '') {

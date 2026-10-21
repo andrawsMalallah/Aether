@@ -149,7 +149,7 @@ function lifecycleScenario(array $configuration, string $name, string $issuance,
         }
         $results = [$firstResult, $secondResult];
         $errors = collect($results)->flatMap(fn (array $result): array => $result['database_errors']);
-        $deadlock = $errors->contains(fn (array $error): bool => $error['vendor_code'] === 1213 && $error['sqlstate'] === '40001');
+        $deadlock = $errors->contains(fn (array $error): bool => $error['sqlstate'] === '40P01');
         $expected = $lifecycleResult['status'] === 200
             && ($lifecycleFirst ? $issuanceResult['status'] === $expectedStatus && $issuanceResult['oauth_error'] === $expectedError : $issuanceResult['status'] === 200)
             && $activeAccess === 0 && $activeRefresh === 0 && $activeCodes === 0

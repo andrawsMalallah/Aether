@@ -29,7 +29,7 @@ it('combines application name or exact id search with status and type and distin
     $suspended->forceFill(['name' => 'Matching suspended', 'status' => OAuthClientStatus::Suspended])->save();
     $this->actingAs(administratorFixture());
     foreach ([
-        ['search' => 'Matching', 'status' => 'live', 'type' => 'web', 'expected' => $live->id],
+        ['search' => 'matching', 'status' => 'live', 'type' => 'web', 'expected' => $live->id],
         ['search' => $spa->id, 'type' => 'spa', 'expected' => $spa->id],
         ['status' => 'revoked', 'expected' => $revoked->id],
         ['search' => 'Matching', 'status' => 'suspended', 'type' => 'web', 'expected' => $suspended->id],

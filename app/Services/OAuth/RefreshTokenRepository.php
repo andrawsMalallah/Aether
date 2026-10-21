@@ -29,7 +29,8 @@ class RefreshTokenRepository extends PassportRefreshTokenRepository
         if (! $access || $access->client_id !== app(TokenContext::class)->clientId) {
             return true;
         }
-        $hasLineage = is_string($access->auth_code_id) && $access->auth_code_id !== '' && $access->user_id !== null;
+        // PostgreSQL CHAR values retain padding, including an otherwise empty legacy family.
+        $hasLineage = is_string($access->auth_code_id) && trim($access->auth_code_id) !== '' && $access->user_id !== null;
         if ($refresh->revoked) {
             if ($hasLineage) {
                 $this->revokeFamily($access->auth_code_id, $access->client_id, $access->user_id);

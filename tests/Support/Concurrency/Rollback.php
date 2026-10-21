@@ -132,7 +132,7 @@ function rollbackScenario(array $configuration, string $name, string $issuance, 
             && $failed['status'] === 500 && $failed['transaction_level'] === 0 && $failed['notifications_empty'] && $failed['queue_empty'];
         $results = [$firstResult, $secondResult];
         $errors = collect($results)->flatMap(fn (array $result): array => $result['database_errors']);
-        $deadlock = $errors->contains(fn (array $error): bool => $error['vendor_code'] === 1213 && $error['sqlstate'] === '40001');
+        $deadlock = $errors->contains(fn (array $error): bool => $error['sqlstate'] === '40P01');
         // These probes occur after snapshots/audit deltas, and never replay spent pairs.
         $pendingProbe = rollbackCodeProbe($pending['data']);
         $unrelatedPendingProbe = rollbackCodeProbe($unrelatedPending['data']);

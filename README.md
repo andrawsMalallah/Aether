@@ -6,7 +6,7 @@ An SSO identity provider built with Laravel 13, Fortify account authentication a
 
 - PHP 8.3+ and Composer 2 (Windows: Laravel Herd).
 - Node 24 LTS recommended; Node 22.12+ is also supported.
-- MySQL/MariaDB for the application; Mailpit for local email.
+- PostgreSQL 18 for the application; Mailpit for local email.
 
 ## Install and check
 
@@ -19,13 +19,15 @@ npm audit
 npm run build
 ```
 
-`composer install` discovers packages but does not create `.env`, generate keys, or run migrations. Tests use an isolated in-memory SQLite database locally. CI overrides the connection to use its own disposable MySQL database. No production database is needed for checks.
+`composer install` discovers packages but does not create `.env`, generate keys, or run migrations. Tests use a dedicated PostgreSQL `aether_testing` database locally and in CI. Local credentials belong in ignored `.env.testing`; the test bootstrap rejects the application database. No production database is needed for checks.
 
 ## Local application setup
 
-Review `.env.example` before creating `.env`. The template uses `aether.test`, the `aether` MySQL database, database sessions and queues, UTC, Argon2id, and local Mailpit on port 1025. Configure database credentials privately in `.env`; never paste them into chat or commit them. Create the local database and generate the application key only after approving local configuration. Point Herd at this directory as `aether.test`; serve its `public` directory.
+Review `.env.example` before creating `.env`. The template uses `aether.test`, the `aether` PostgreSQL database, database sessions and queues, UTC, Argon2id, and local Mailpit on port 1025. Configure database credentials privately in `.env`; never paste them into chat or commit them. Create the local database and generate the application key only after approving local configuration. Point Herd at this directory as `aether.test`; serve its `public` directory.
 
-Once local setup is complete, open `http://aether.test` to check the welcome page. `npm run dev` starts the asset development server; `npm run build` produces assets for deployment.
+For a fresh Windows PostgreSQL installation, `scripts/setup-postgres.ps1` prompts privately for an existing local administrator password and creates the application role plus `aether`/`aether_testing` databases. It refuses existing target databases/roles or `.env.testing`, so never use it to reset an installation. It saves only generated application credentials in ignored `.env`/`.env.testing`. Its local role has CREATEDB solely for explicit concurrency-test provisioning; deployed roles must not have that privilege. Other platforms can provision equivalent dedicated PostgreSQL roles/databases manually. Configure these before running `composer check`; tests reset only the isolated `aether_testing` database and reject the application database.
+
+Once local setup is complete, open the configured `APP_URL` to check the welcome page. Use `npm run build`: Aether deliberately ignores Vite hot-file markers to preserve its browser security policy.
 
 After confirming the database is a local development database, run normal `php artisan migrate`. Do not use `migrate:fresh` or `db:wipe`. Start Mailpit, then run `php artisan queue:work` so verification and reset emails are delivered. Queue workers must be restarted after application code or configuration changes.
 
@@ -47,7 +49,7 @@ The approved policy retains audits for 365 days and failed jobs for 30 days. Cre
 
 Each category scans at most 1,000 primary-key rows and deletes at most 1,000 records per invocation, with at most 20 distinct candidate families examined. OAuth deletion counts include both refresh and access rows. Large eligible families are removed in bounded parts, refresh before access. Counts are for the current scan, not database-wide totals; previews are advisory and execution rechecks eligibility. Execution saves encrypted checkpoints in the configured cache and rotates through retained rows; previews never advance checkpoints. New lower-key rows are found after the cursor wraps. Cache eviction can restart scans without changing eligibility. Full cycles and backlogs can delay actual removal beyond the minimum retention period.
 
-Schedules are present but disabled by default (`retention.scheduled_enabled`, from `AETHER_RETENTION_ENABLED=false`). A later approved rollout must use shared atomic persistent cache, one scheduler leader and the same database/configuration across processes; enable only after MySQL race/query-plan verification and a reviewed preview/backup. The session sweep is hourly; other categories run daily at 03:20 application time (UTC). Execution uses a 10-minute cache lock; monitor runtime and keep it within that lease. Unsupported selected session/reset/failed-job stores fail closed before any category is mutated. Do not schedule bare `passport:purge` or revoked-only deletion: those can remove refresh replay evidence early. Collector logs/backups/mail/provider objects have separate operational retention policies.
+Schedules are present but disabled by default (`retention.scheduled_enabled`, from `AETHER_RETENTION_ENABLED=false`). A later approved rollout must use shared atomic persistent cache, one scheduler leader and the same database/configuration across processes; enable only after PostgreSQL race/query-plan verification and a reviewed preview/backup. The session sweep is hourly; other categories run daily at 03:20 application time (UTC). Execution uses a 10-minute cache lock; monitor runtime and keep it within that lease. Unsupported selected session/reset/failed-job stores fail closed before any category is mutated. Do not schedule bare `passport:purge` or revoked-only deletion: those can remove refresh replay evidence early. Collector logs/backups/mail/provider objects have separate operational retention policies.
 
 ## Account behavior
 
@@ -59,7 +61,7 @@ The approved policy retains audits for 365 days and failed jobs for 30 days. Cre
 
 Each category scans at most 1,000 primary-key rows and deletes at most 1,000 records per invocation, with at most 20 distinct candidate families examined. OAuth deletion counts include both refresh and access rows. Large eligible families are removed in bounded parts, refresh before access. Counts are for the current scan, not database-wide totals; previews are advisory and execution rechecks eligibility. Execution saves encrypted checkpoints in the configured cache and rotates through retained rows; previews never advance checkpoints. New lower-key rows are found after the cursor wraps. Cache eviction can restart scans without changing eligibility. Full cycles and backlogs can delay actual removal beyond the minimum retention period.
 
-Schedules are present but disabled by default (`retention.scheduled_enabled`, from `AETHER_RETENTION_ENABLED=false`). A later approved rollout must use shared atomic persistent cache, one scheduler leader and the same database/configuration across processes; enable only after MySQL race/query-plan verification and a reviewed preview/backup. The session sweep is hourly; other categories run daily at 03:20 application time (UTC). Execution uses a 10-minute cache lock; monitor runtime and keep it within that lease. Unsupported selected session/reset/failed-job stores fail closed before any category is mutated. Do not schedule bare `passport:purge` or revoked-only deletion: those can remove refresh replay evidence early. Collector logs/backups/mail/provider objects have separate operational retention policies.
+Schedules are present but disabled by default (`retention.scheduled_enabled`, from `AETHER_RETENTION_ENABLED=false`). A later approved rollout must use shared atomic persistent cache, one scheduler leader and the same database/configuration across processes; enable only after PostgreSQL race/query-plan verification and a reviewed preview/backup. The session sweep is hourly; other categories run daily at 03:20 application time (UTC). Execution uses a 10-minute cache lock; monitor runtime and keep it within that lease. Unsupported selected session/reset/failed-job stores fail closed before any category is mutated. Do not schedule bare `passport:purge` or revoked-only deletion: those can remove refresh replay evidence early. Collector logs/backups/mail/provider objects have separate operational retention policies.
 
 ## Account behavior
 
@@ -90,7 +92,7 @@ On desktop and a 320px-wide mobile viewport:
 6. Request an email change. Confirm the old address remains active before confirmation, then follow the new address's link while signed in. Confirm the old address receives a notice.
 7. Use keyboard navigation to check labels and focus rings; confirm all forms fit the mobile viewport.
 
-Automated checks are isolated. Live MySQL, Mailpit, and GitHub Actions verification must also pass before marking Phase 1 complete.
+Automated checks are isolated. Live PostgreSQL, Mailpit, and GitHub Actions verification must also pass before marking Phase 1 complete.
 
 ## Two-factor authentication
 
@@ -132,9 +134,9 @@ Authorization codes last one minute; access tokens last one hour; refresh tokens
 
 Reuse of a retained, unexpired rotated refresh token rejects the request and atomically revokes its authorization-code family's access/refresh credentials, including the latest successor. This applies to Browser, Mobile and confidential Web clients; separate grants, users and clients remain valid. Legacy refresh credentials without a stored account or nonempty family identifier cannot refresh and require a fresh sign-in. Family linkage survives authorization-code row cleanup. Expired encrypted refresh payloads are rejected by the underlying library before replay detection; purged ancestor records cannot identify a family. Existing expiry/retention and the revocation endpoint's pair semantics are unchanged.
 
-Regression checks: `php vendor/bin/pest tests/Feature/Security/RefreshTokenReplayTest.php`. Manual review with a disposable client/account: obtain a token pair, refresh once, then reuse the old refresh token. Expect `invalid_grant`; the replacement access token must fail UserInfo and its refresh token must also fail. A separately authorized grant should continue working. Handle credentials only inside the client, never logs or screenshots. The dedicated MySQL concurrency matrix passes forty-six schedules: fourteen token-race checks, sixteen code/refresh versus secret rotation, consent disconnect, suspension and account deletion request checks, and sixteen rollback checks for those lifecycle actions, in both orders. Every schedule requires an observed database lock wait. Rollback checks deliberately inject a late pre-commit action failure, verify exact state restoration and lock release, and distinguish it from unexpected errors. Token requests use the HTTP kernel; lifecycle operations invoke policy-checked actions, with browser middleware covered by feature tests. Broader lifecycle combinations, stress schedules and staging conformance remain separate gates.
+Regression checks: `php vendor/bin/pest tests/Feature/Security/RefreshTokenReplayTest.php`. Manual review with a disposable client/account: obtain a token pair, refresh once, then reuse the old refresh token. Expect `invalid_grant`; the replacement access token must fail UserInfo and its refresh token must also fail. A separately authorized grant should continue working. Handle credentials only inside the client, never logs or screenshots. The PostgreSQL concurrency matrix passes forty-six schedules: fourteen token-race checks, sixteen code/refresh versus secret rotation, consent disconnect, suspension and account deletion request checks, and sixteen rollback checks for those lifecycle actions, in both orders. Every schedule requires an observed database lock wait. Rollback checks deliberately inject a late pre-commit action failure, verify exact state restoration and lock release, and distinguish it from unexpected errors. Token requests use the HTTP kernel; lifecycle operations invoke policy-checked actions, with browser middleware covered by feature tests. Broader lifecycle combinations, stress schedules and staging conformance remain separate gates.
 
-The opt-in MySQL concurrency runner is `tests/Concurrency/MysqlTokenConcurrencyTest.php`, outside default test suites. It requires explicit provisioning/resume flags and a guarded dedicated run database; never point concurrency fixtures at the normal application database. Database provisioning, further runs and cleanup need an agreed local scope. It reports safe status/state results and returns nonzero for findings, including deadlocks. It does not automatically provision databases through `composer test` or CI.
+The opt-in PostgreSQL concurrency runner is `tests/Concurrency/PostgresTokenConcurrencyTest.php`, outside default test suites. It requires explicit provisioning/resume flags and a guarded dedicated run database; never point concurrency fixtures at the normal application database. Database provisioning, further runs and cleanup need an agreed local scope. It reports safe status/state results and returns nonzero for findings, including deadlocks. It does not automatically provision databases through `composer test` or CI.
 
 Consent persists independently of token expiry, unions approved scopes, and re-prompts for expansion or revoked grants. The explicit `first_party` flag skips consent; ownerless clients do not automatically become trusted. `prompt=consent` forces a prompt. Consent submissions bind to the signed-in user and recheck current restrictions.
 
@@ -221,7 +223,7 @@ Existing ID/status and audit user/client/time indexes support these lists. Type/
 
 ## Validation and manual review
 
-Run `composer check`, `composer validate --strict`, `composer audit`, `npm audit`, and `npm run build` before publication. The current local suite has 345 tests / 2,893 assertions. Feature suites generate ephemeral signing keys and do not depend on local provider keys. CI additionally runs the suite on disposable MySQL.
+Run `composer check`, `composer validate --strict`, `composer audit`, `npm audit`, and `npm run build` before publication. The PostgreSQL migration checkpoint passed 670 tests / 6,395 assertions. Feature suites generate ephemeral signing keys and do not depend on local provider keys. CI runs the suite on disposable PostgreSQL 18.
 
 Review new pages at desktop and 320px widths using Tab, Space and Enter. Automated protocol/template checks do not establish native OS callback delivery or production readiness.
 

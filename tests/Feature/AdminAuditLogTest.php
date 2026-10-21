@@ -76,7 +76,7 @@ it('combines exact action app actor and inclusive UTC dates without leaking adja
 });
 
 it('paginates newest first with a stable id tie break and preserves only validated filters', function (): void {
-    // MySQL sequences survive rolled-back tests; never assume this fixture starts at ID 1.
+    // PostgreSQL sequences survive rolled-back tests; never assume this fixture starts at ID 1.
     AuditLog::create(['event' => OAuthAuditEvent::ClientUpdated]);
     $identifiers = [];
     for ($number = 0; $number < 13; $number++) {

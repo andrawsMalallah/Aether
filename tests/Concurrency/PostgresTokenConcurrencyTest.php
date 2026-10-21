@@ -37,14 +37,16 @@ function provisionConcurrencyDatabase(array $configuration): void
 {
     $pdo = Bootstrap::pdo($configuration, false);
     $database = Bootstrap::databaseName($configuration['run_id']);
-    $statement = $pdo->prepare('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?');
+    $statement = $pdo->prepare('SELECT datname FROM pg_database WHERE datname = ?');
     $statement->execute([$database]);
     if ($statement->fetchColumn() !== false) {
         throw new RuntimeException('Refusing to provision an existing database.');
     }
-    $pdo->exec('CREATE DATABASE `'.$database.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-    $pdo->exec('USE `'.$database.'`');
-    $pdo->exec('CREATE TABLE concurrency_run (run_id CHAR(12) PRIMARY KEY, owner_hash CHAR(64) NOT NULL, schema_version INT NOT NULL) ENGINE=InnoDB');
+    // databaseName accepts only the fixed prefix plus a bounded hexadecimal identity.
+    $pdo->exec('CREATE DATABASE "'.$database.'" TEMPLATE template0 ENCODING \'UTF8\'');
+    $pdo = new PDO('pgsql:host=127.0.0.1;port='.$configuration['port'].';dbname='.$database,
+        $configuration['username'], $configuration['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo->exec('CREATE TABLE concurrency_run (run_id CHAR(12) PRIMARY KEY, owner_hash CHAR(64) NOT NULL, schema_version INT NOT NULL)');
     $statement = $pdo->prepare('INSERT INTO concurrency_run (run_id, owner_hash, schema_version) VALUES (?, ?, 1)');
     $statement->execute([$configuration['run_id'], Bootstrap::owner()]);
 }
@@ -181,7 +183,7 @@ function concurrencyAction(array $fixture, string $action, bool $cycle): array
 function concurrencyWait(PDO $pdo, string $database, int $requester, int $blocker): array
 {
     try {
-        $statement = $pdo->prepare('SELECT COUNT(*) AS wait_count, MIN(l.OBJECT_NAME) AS requested_table FROM performance_schema.data_lock_waits w JOIN performance_schema.threads r ON r.THREAD_ID = w.REQUESTING_THREAD_ID JOIN performance_schema.threads b ON b.THREAD_ID = w.BLOCKING_THREAD_ID JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID = w.REQUESTING_ENGINE_LOCK_ID AND l.ENGINE = w.ENGINE WHERE r.PROCESSLIST_ID = ? AND b.PROCESSLIST_ID = ? AND l.OBJECT_SCHEMA = ?');
+        $statement = $pdo->prepare("SELECT COUNT(*) AS wait_count, MIN(c.relname) AS requested_table FROM pg_stat_activity a JOIN pg_locks l ON l.pid = a.pid JOIN pg_class c ON c.oid = l.relation WHERE a.pid = ? AND CAST(? AS integer) = ANY(pg_blocking_pids(a.pid)) AND a.datname = ? AND l.mode = 'RowShareLock' AND position(quote_ident(c.relname) in a.query) > 0 AND c.relname IN ('oauth_clients', 'users', 'oauth_access_tokens', 'oauth_refresh_tokens', 'consents')");
         $statement->execute([$requester, $blocker, $database]);
         $wait = $statement->fetch(PDO::FETCH_ASSOC);
 
@@ -248,7 +250,7 @@ function concurrencyScenario(array $configuration, string $name, string $firstAc
         }
         $audits = array_filter($audits);
         $results = [$firstResult, $secondResult];
-        $deadlock = collect($results)->flatMap(fn (array $result): array => $result['database_errors'])->contains(fn (array $error): bool => $error['vendor_code'] === 1213 && $error['sqlstate'] === '40001');
+        $deadlock = collect($results)->flatMap(fn (array $result): array => $result['database_errors'])->contains(fn (array $error): bool => $error['sqlstate'] === '40P01');
         $identityValid = ! in_array(false, array_column($results, 'identity_valid'), true);
         $statuses = array_column($results, 'status');
         $auditValid = match (true) {
@@ -301,17 +303,17 @@ try {
     if (PHP_SAPI !== 'cli' || isset($options['case']) && ! in_array($options['case'], $allowedCases, true)) {
         throw new RuntimeException('CLI execution and a recognized case are required.');
     }
-    if (! extension_loaded('pdo_mysql') || ! function_exists('proc_open') || is_file(Bootstrap::root().'/bootstrap/cache/config.php')) {
+    if (! extension_loaded('pdo_pgsql') || ! function_exists('proc_open') || is_file(Bootstrap::root().'/bootstrap/cache/config.php')) {
         throw new RuntimeException('Required local test capabilities unavailable.');
     }
     // Read only connection selection privately; never boot the app with the local .env.
     $local = Dotenv::parse(file_get_contents(Bootstrap::root().'/.env'));
-    if (($local['APP_ENV'] ?? null) !== 'local' || ($local['DB_CONNECTION'] ?? null) !== 'mysql'
+    if (($local['APP_ENV'] ?? null) !== 'local' || ($local['DB_CONNECTION'] ?? null) !== 'pgsql'
         || ($local['DB_HOST'] ?? null) !== '127.0.0.1' || ! empty($local['DB_URL']) || ! empty($local['DB_SOCKET'])) {
         throw new RuntimeException('Local connection safety guard failed.');
     }
     $keys = RSA::createKey(2048);
-    $configuration = ['run_id' => $runId, 'host' => '127.0.0.1', 'port' => (int) ($local['DB_PORT'] ?? 3306),
+    $configuration = ['run_id' => $runId, 'host' => '127.0.0.1', 'port' => (int) ($local['DB_PORT'] ?? 5432),
         'username' => $local['DB_USERNAME'] ?? '', 'password' => $local['DB_PASSWORD'] ?? '',
         'app_key' => 'base64:'.base64_encode(Encrypter::generateKey('AES-256-CBC')),
         'private_key' => (string) $keys, 'public_key' => (string) $keys->getPublicKey()];
@@ -326,13 +328,8 @@ try {
         Artisan::call('migrate', ['--force' => true]);
     }
     $database = Bootstrap::databaseName($runId);
-    $engines = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND ENGINE <> ?');
-    $engines->execute([$database, 'InnoDB']);
-    if ((int) $engines->fetchColumn() !== 0) {
-        throw new RuntimeException('Non-InnoDB table refused.');
-    }
     $report = ['database' => $database, 'run_id' => $runId, 'server_version' => $pdo->query('SELECT VERSION()')->fetchColumn(),
-        'isolation' => $pdo->query('SELECT @@transaction_isolation')->fetchColumn(), 'results' => []];
+        'isolation' => $pdo->query('SHOW transaction_isolation')->fetchColumn(), 'results' => []];
     if (! isset($options['setup-only'])) {
         foreach ([['code', 'code'], ['refresh', 'refresh'], ['refresh', 'revoke_access'], ['refresh', 'revoke_refresh'], ['revoke_access', 'revoke_refresh']] as $pair) {
             foreach ([false, true] as $reverse) {
@@ -386,7 +383,7 @@ try {
         }
     }
     $report['fixture_counts'] = ['users' => User::count(), 'clients' => OAuthClient::count(), 'access_tokens' => Passport::token()->newQuery()->count()];
-    $reportPath = Bootstrap::root().'/storage/app/mysql-concurrency-'.$runId.'-'.gmdate('YmdHis').'.json';
+    $reportPath = Bootstrap::root().'/storage/app/pgsql-concurrency-'.$runId.'-'.gmdate('YmdHis').'.json';
     file_put_contents($reportPath, json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), LOCK_EX);
     echo json_encode(['database' => $database, 'report' => $reportPath, 'scenarios' => count($report['results']),
         'findings' => count(array_filter($report['results'], fn (array $result): bool => $result['classification'] !== 'passed'))], JSON_THROW_ON_ERROR).PHP_EOL;
@@ -395,6 +392,6 @@ try {
     // Never print arbitrary exception text, SQL, connection data or protocol payloads.
     echo json_encode(['classification' => 'harness_setup_or_execution_failure', 'exception_class' => get_class($exception),
         'source_file' => basename($exception->getFile()), 'source_line' => $exception->getLine(),
-        'reason' => get_class($exception) === RuntimeException::class && in_array(basename($exception->getFile()), ['MysqlTokenConcurrencyTest.php', 'Bootstrap.php', 'WorkerProcess.php'], true) ? $exception->getMessage() : null], JSON_THROW_ON_ERROR).PHP_EOL;
+        'reason' => get_class($exception) === RuntimeException::class && in_array(basename($exception->getFile()), ['PostgresTokenConcurrencyTest.php', 'Bootstrap.php', 'WorkerProcess.php'], true) ? $exception->getMessage() : null], JSON_THROW_ON_ERROR).PHP_EOL;
     exit(2);
 }

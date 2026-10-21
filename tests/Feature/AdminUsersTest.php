@@ -39,7 +39,7 @@ it('combines literal name or email search with overlapping roles and verificatio
         $this->get('/admin/users?'.http_build_query(['search' => '%_!', 'role' => $role, 'verification' => 'verified']))
             ->assertOk()->assertViewHas('users', fn ($users): bool => $users->total() === 1 && $users->first()['id'] === $target->id);
     }
-    $this->get('/admin/users?search=matching%40example')->assertViewHas('users', fn ($users): bool => $users->total() === 1);
+    $this->get('/admin/users?search=MATCHING%40EXAMPLE')->assertViewHas('users', fn ($users): bool => $users->total() === 1);
     $this->get('/admin/users?role=user')->assertViewHas('users', fn ($users): bool => $users->total() === 0);
     $this->get('/admin/users?verification=unverified')->assertViewHas('users', fn ($users): bool => $users->total() === 1);
 });

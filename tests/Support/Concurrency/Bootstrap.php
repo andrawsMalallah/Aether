@@ -27,7 +27,7 @@ final class Bootstrap
             throw new RuntimeException('Invalid concurrency run identity.');
         }
 
-        return 'aether_concurrency_20261020_'.$runId;
+        return 'aether_pg_concurrency_'.$runId;
     }
 
     public static function owner(): string
@@ -41,9 +41,9 @@ final class Bootstrap
         $database = self::databaseName($configuration['run_id']);
         if ($configuration['host'] !== '127.0.0.1' || ! is_int($configuration['port'])
             || $configuration['port'] < 1 || $configuration['port'] > 65535) {
-            throw new RuntimeException('Only explicit loopback MySQL is allowed.');
+            throw new RuntimeException('Only explicit loopback PostgreSQL is allowed.');
         }
-        $pdo = new PDO('mysql:host=127.0.0.1;port='.$configuration['port'].($selectDatabase ? ';dbname='.$database : '').';charset=utf8mb4',
+        $pdo = new PDO('pgsql:host=127.0.0.1;port='.$configuration['port'].';dbname='.($selectDatabase ? $database : 'postgres'),
             $configuration['username'], $configuration['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]);
         if ($selectDatabase) {
             self::guard($pdo, $configuration['run_id']);
@@ -54,7 +54,7 @@ final class Bootstrap
 
     public static function guard(PDO $pdo, string $runId): void
     {
-        if ($pdo->query('SELECT DATABASE()')->fetchColumn() !== self::databaseName($runId)) {
+        if ($pdo->query('SELECT current_database()')->fetchColumn() !== self::databaseName($runId)) {
             throw new RuntimeException('Database identity mismatch.');
         }
         $statement = $pdo->prepare('SELECT owner_hash, schema_version FROM concurrency_run WHERE run_id = ?');
@@ -74,10 +74,10 @@ final class Bootstrap
         }
         $overrides = [
             'APP_ENV' => 'testing', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://aether-concurrency.test',
-            'APP_KEY' => $configuration['app_key'], 'DB_CONNECTION' => 'mysql', 'DB_HOST' => '127.0.0.1',
+            'APP_KEY' => $configuration['app_key'], 'DB_CONNECTION' => 'pgsql', 'DB_HOST' => '127.0.0.1',
             'DB_PORT' => (string) $configuration['port'], 'DB_DATABASE' => $database,
             'DB_USERNAME' => $configuration['username'], 'DB_PASSWORD' => $configuration['password'],
-            'DB_URL' => '', 'DB_SOCKET' => '', 'SESSION_DRIVER' => 'database', 'SESSION_CONNECTION' => 'mysql',
+            'DB_URL' => '', 'DB_SOCKET' => '', 'SESSION_DRIVER' => 'database', 'SESSION_CONNECTION' => 'pgsql',
             'CACHE_STORE' => 'array', 'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'array',
             'HASH_DRIVER' => 'argon2id', 'ARGON_MEMORY' => '1024', 'ARGON_TIME' => '1',
             'PASSPORT_PRIVATE_KEY' => $configuration['private_key'], 'PASSPORT_PUBLIC_KEY' => $configuration['public_key'],
@@ -89,13 +89,13 @@ final class Bootstrap
         $application = require self::root().'/bootstrap/app.php';
         $application->loadEnvironmentFrom('.env.example');
         $application->make(Kernel::class)->bootstrap();
-        if (! $application->environment('testing') || config('database.default') !== 'mysql'
-            || config('database.connections.mysql.database') !== $database
-            || config('database.connections.mysql.host') !== '127.0.0.1') {
+        if (! $application->environment('testing') || config('database.default') !== 'pgsql'
+            || config('database.connections.pgsql.database') !== $database
+            || config('database.connections.pgsql.host') !== '127.0.0.1') {
             throw new RuntimeException('Effective test configuration mismatch.');
         }
         self::guard(DB::connection()->getPdo(), $configuration['run_id']);
-        DB::statement('SET SESSION innodb_lock_wait_timeout = 8');
+        DB::statement("SET lock_timeout = '8s'");
         Http::preventStrayRequests();
         Notification::fake();
         Queue::fake();

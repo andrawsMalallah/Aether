@@ -117,7 +117,7 @@ class PruneRetainedRecords
             if (in_array($category, [RetentionCategory::OAuth, RetentionCategory::Codes], true)) {
                 if ($category === RetentionCategory::OAuth) {
                     $lineage = $row->auth_code_id;
-                    $family = json_encode([$row->client_id, $row->user_id, $lineage === null || $lineage === '' ? $row->id : $lineage], JSON_THROW_ON_ERROR);
+                    $family = json_encode([$row->client_id, $row->user_id, $lineage === null || trim($lineage) === '' ? $row->id : $lineage], JSON_THROW_ON_ERROR);
                     if (isset($families[$family])) {
                         continue;
                     }

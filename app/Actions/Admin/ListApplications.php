@@ -6,6 +6,7 @@ use App\Models\OAuthClient;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class ListApplications
 {
@@ -23,7 +24,11 @@ class ListApplications
             // Treat SQL wildcard characters literally; client IDs match exactly.
             $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
             $query->where(function (Builder $query) use ($search, $pattern): void {
-                $query->whereRaw("name LIKE ? ESCAPE '!'", [$pattern])->orWhere('id', $search);
+                $query->whereRaw("name ILIKE ? ESCAPE '!'", [$pattern]);
+                // PostgreSQL rejects arbitrary search text when comparing UUID columns.
+                if (Str::isUuid($search)) {
+                    $query->orWhere('id', $search);
+                }
             });
         }
         $status = $filters['status'] ?? null;

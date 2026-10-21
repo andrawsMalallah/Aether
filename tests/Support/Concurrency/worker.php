@@ -51,7 +51,7 @@ try {
     $gate = $input['gate'];
     $paused = false;
     $match = function (string $sql, array $bindings) use ($gate): bool {
-        return str_contains($sql, '`'.$gate['table'].'`')
+        return str_contains($sql, '"'.$gate['table'].'"')
             && str_starts_with(strtolower($sql), $gate['operation'])
             && ($gate['operation'] !== 'select' || str_contains($sql, 'for update'))
             && in_array($gate['identifier'], $bindings, true);
@@ -59,7 +59,7 @@ try {
     DB::connection()->beforeExecuting(function (string $sql, array $bindings) use ($input): void {
         if (str_contains($sql, 'for update') || str_starts_with(strtolower($sql), 'update ')) {
             foreach (['users', 'consents', 'oauth_clients', 'oauth_access_tokens', 'oauth_refresh_tokens'] as $table) {
-                if (str_contains($sql, '`'.$table.'`')) {
+                if (str_contains($sql, '"'.$table.'"')) {
                     concurrencyEvent(['type' => 'attempt', 'worker' => $input['worker'], 'table' => $table]);
                     break;
                 }
@@ -76,7 +76,7 @@ try {
             }
         }
     });
-    concurrencyEvent(['type' => 'ready', 'worker' => $input['worker'], 'connection' => (int) DB::selectOne('SELECT CONNECTION_ID() AS identifier')->identifier]);
+    concurrencyEvent(['type' => 'ready', 'worker' => $input['worker'], 'connection' => (int) DB::selectOne('SELECT pg_backend_pid() AS identifier')->identifier]);
     if (isset($input['lifecycle'])) {
         // Test-only action invocation retains the real action policies and transactions.
         // Browser middleware is covered by the normal feature suite, not this worker.
