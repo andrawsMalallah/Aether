@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\Handler;
+use App\Http\Controllers\ReadinessController;
 use App\Http\Middleware\RestrictDeletingAccount;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SerializeAccountIdentityChanges;
@@ -18,7 +19,11 @@ $application = Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        then: fn () => Route::group([], base_path('routes/oauth.php')),
+        then: function (): void {
+            Route::group([], base_path('routes/oauth.php'));
+            // Public operational probe: no session, user/resource data or authentication dependency.
+            Route::get('/ready', ReadinessController::class)->name('readiness');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Wrap early responses as well as routed pages, including CORS preflights.

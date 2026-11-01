@@ -1,0 +1,60 @@
+# INERT REVIEW TEMPLATE. Replace region/plan placeholders before validation or use.
+# Activating this file creates billable resources and needs separate approval.
+# Pre-create and populate aether-runtime as documented in docker/README.md.
+# It is managed outside this Blueprint so all roles receive the same secrets.
+services:
+  - type: web
+    name: aether-web
+    runtime: docker
+    region: REPLACE_REGION
+    plan: REPLACE_ALWAYS_ON_PLAN
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: web
+    autoDeployTrigger: 'off'
+    healthCheckPath: /ready
+    maxShutdownDelaySeconds: 120
+    # Enable preDeployCommand: release only after target/backup/migration approval.
+    envVars:
+      - fromGroup: aether-runtime
+      - key: DB_URL
+        fromDatabase:
+          name: aether-db
+          property: connectionString
+  - type: worker
+    name: aether-worker
+    runtime: docker
+    region: REPLACE_REGION
+    plan: REPLACE_WORKER_PLAN
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: worker
+    autoDeployTrigger: 'off'
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - fromGroup: aether-runtime
+      - key: DB_URL
+        fromDatabase:
+          name: aether-db
+          property: connectionString
+  - type: cron
+    name: aether-scheduler
+    runtime: docker
+    region: REPLACE_REGION
+    plan: REPLACE_CRON_PLAN
+    schedule: '* * * * *'
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: scheduler
+    autoDeployTrigger: 'off'
+    envVars:
+      - fromGroup: aether-runtime
+      - key: DB_URL
+        fromDatabase:
+          name: aether-db
+          property: connectionString
+databases:
+  - name: aether-db
+    region: REPLACE_REGION
+    plan: REPLACE_DATABASE_PLAN
+    postgresMajorVersion: '18'

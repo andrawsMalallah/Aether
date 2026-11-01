@@ -2,6 +2,10 @@
 
 An SSO identity provider built with Laravel 13, Fortify account authentication and confirmed two-factor authentication, and Passport OAuth2 with an OpenID Connect identity layer. Discovery, JWKS, scope-filtered userinfo, and standard signed ID tokens support basic "Sign in with Aether" integration. The developer portal, administrative client lifecycle and audit viewer are implemented; production hardening remains ongoing.
 
+## Docker packaging
+
+Herd remains the local development environment. The additional Docker release format uses one unprivileged PHP 8.3 Apache image for web, worker and scheduler roles. See [docker/README.md](docker/README.md) for build commands, runtime requirements and isolated verification. [deploy/render.yaml.example](deploy/render.yaml.example) is an inactive review template; hosting, secrets, proxy configuration and migration execution require separate rollout approval.
+
 ## Requirements
 
 - PHP 8.3+ and Composer 2 (Windows: Laravel Herd).
