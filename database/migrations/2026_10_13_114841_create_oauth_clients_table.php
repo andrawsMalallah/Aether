@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('oauth_clients', function (Blueprint $table) {
+        Schema::create('oauth_clients', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->nullableMorphs('owner');
             $table->string('name');
@@ -21,6 +21,14 @@ return new class extends Migration
             $table->text('grant_types');
             $table->boolean('revoked');
             $table->timestamps();
+            $table->boolean('first_party')->default(false);
+            $table->string('logo_path')->nullable();
+            $table->string('homepage_url')->nullable();
+            $table->string('status')->default('testing')->index();
+            $table->string('app_type')->default('web');
+            $table->json('allowed_scopes')->nullable();
+            // Resource permissions remain privileged, outside developer settings input.
+            $table->json('introspection_client_ids')->nullable();
         });
     }
 

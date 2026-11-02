@@ -21,6 +21,7 @@ use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Token\Parser;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Concurrency\Bootstrap;
+use Tests\Support\Concurrency\Retention;
 
 require dirname(__DIR__, 3).'/vendor/autoload.php';
 
@@ -40,6 +41,9 @@ function concurrencyEvent(array $event): void
 try {
     $input = json_decode((string) fgets(STDIN), true, flags: JSON_THROW_ON_ERROR);
     $application = Bootstrap::boot($input['configuration']);
+    if (isset($input['configuration']['retention_scope'])) {
+        Retention::configure($input['configuration']);
+    }
     $errors = [];
     $injection = ['count' => 0, 'in_transaction' => false, 'mutations_observed' => false];
     $injectedFailure = false;
@@ -77,6 +81,12 @@ try {
         }
     });
     concurrencyEvent(['type' => 'ready', 'worker' => $input['worker'], 'connection' => (int) DB::selectOne('SELECT pg_backend_pid() AS identifier')->identifier]);
+    if (isset($input['retention_op'])) {
+        $result = Retention::work($input);
+        concurrencyEvent(['type' => 'result', 'worker' => $input['worker'], ...$result,
+            'database_errors' => $errors, 'transaction_level' => DB::transactionLevel()]);
+        exit(0);
+    }
     if (isset($input['lifecycle'])) {
         // Test-only action invocation retains the real action policies and transactions.
         // Browser middleware is covered by the normal feature suite, not this worker.

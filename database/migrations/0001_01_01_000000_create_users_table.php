@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -19,6 +19,18 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+            $table->string('avatar_path')->nullable();
+            $table->string('pending_email')->nullable();
+            $table->timestamp('pending_email_requested_at')->nullable();
+            $table->text('two_factor_secret')->nullable();
+            $table->text('two_factor_recovery_codes')->nullable();
+            $table->timestamp('two_factor_confirmed_at')->nullable();
+            // Privileged flags are assigned by application actions, never profile input.
+            $table->boolean('is_developer')->default(false);
+            $table->boolean('is_admin')->default(false)->index();
+            $table->timestamp('deletion_requested_at')->nullable();
+            $table->timestamp('deletion_due_at')->nullable()->index();
+            $table->timestamp('anonymized_at')->nullable();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

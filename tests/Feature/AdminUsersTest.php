@@ -92,6 +92,22 @@ it('rejects malformed query filters safely', function (array $filters): void {
     [['verification' => ['verified']]], [['verification' => 'yes']], [['page' => 0]], [['page' => ['1']]],
 ]);
 
+it('treats out of range user route identifiers as missing', function (string $identifier): void {
+    $this->actingAs($this->admin)->get('/admin/users/'.$identifier)->assertNotFound();
+})->with([
+    'above bigint maximum' => '9223372036854775808',
+    'very long identifier' => str_repeat('9', 100),
+    'padded overflow' => '0009223372036854775808',
+]);
+
+it('resolves valid user identifiers at the integer boundary and with leading zeroes', function (): void {
+    $boundary = User::factory()->create(['id' => '9223372036854775807']);
+    $this->actingAs($this->admin);
+    foreach ([(string) $this->admin->id, '000'.$this->admin->id, (string) $boundary->id, '000'.$boundary->id] as $identifier) {
+        $this->get('/admin/users/'.$identifier)->assertOk();
+    }
+});
+
 it('enforces policies when actions are called directly', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user);

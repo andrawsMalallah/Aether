@@ -6,6 +6,7 @@ use App\Http\Resources\AdminAuditLogResource;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -130,3 +131,24 @@ it('rejects invalid audit filters without scalar input errors or redirect loops'
     'reverse range' => [['from' => '2026-10-16', 'to' => '2026-10-15'], 'to'],
     'page array' => [['page' => [2]], 'page'],
 ]);
+
+it('returns no matches for out of range numeric actors through HTTP and direct action calls', function (string $identifier): void {
+    AuditLog::create(['user_id' => $this->admin->id, 'event' => OAuthAuditEvent::ClientUpdated]);
+    $this->actingAs($this->admin)->get('/admin/audit?'.http_build_query(['actor' => $identifier]))
+        ->assertOk()->assertViewHas('logs', fn (LengthAwarePaginator $logs): bool => $logs->total() === 0);
+    expect(app(ListAuditLogs::class)->handle(['actor' => $identifier])->total())->toBe(0);
+})->with([
+    'above bigint maximum' => '9223372036854775808',
+    'longest accepted numeric filter' => str_repeat('9', 255),
+    'padded overflow' => '0009223372036854775808',
+]);
+
+it('preserves numeric actor boundary leading zero and email searches', function (): void {
+    $boundary = User::factory()->create(['id' => '9223372036854775807']);
+    AuditLog::create(['user_id' => $boundary->id, 'event' => OAuthAuditEvent::ClientUpdated]);
+    $this->actingAs($this->admin);
+    foreach ([(string) $boundary->id, '000'.$boundary->id, $boundary->email] as $identifier) {
+        $this->get('/admin/audit?'.http_build_query(['actor' => $identifier]))
+            ->assertOk()->assertViewHas('logs', fn (LengthAwarePaginator $logs): bool => $logs->total() === 1);
+    }
+});

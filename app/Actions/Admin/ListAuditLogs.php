@@ -26,7 +26,10 @@ class ListAuditLogs
         $actor = $filters['actor'] ?? '';
         if ($actor !== '') {
             if (ctype_digit($actor)) {
-                $query->where('user_id', $actor);
+                $identifier = ltrim($actor, '0');
+                $validIdentifier = filter_var($identifier, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false;
+                // An impossible numeric identity is a no-match search, never an unsafe bigint binding.
+                $query->whereIn('user_id', $validIdentifier ? [$identifier] : []);
             } else {
                 $query->whereHas('actor', fn ($query) => $query->where('email', $actor));
             }

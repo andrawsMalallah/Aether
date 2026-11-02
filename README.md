@@ -6,6 +6,33 @@ An SSO identity provider built with Laravel 13, Fortify account authentication a
 
 Herd remains the local development environment. The additional Docker release format uses one unprivileged PHP 8.3 Apache image for web, worker and scheduler roles. See [docker/README.md](docker/README.md) for build commands, runtime requirements and isolated verification. [deploy/render.yaml.example](deploy/render.yaml.example) is an inactive review template; hosting, secrets, proxy configuration and migration execution require separate rollout approval.
 
+## Isolated PostgreSQL retention validation
+
+`tests/Concurrency/PostgresRetentionConcurrencyTest.php` is an explicit standalone test runner, outside the normal Unit/Feature suites. It requires PostgreSQL 18 on loopback and a fresh generated, checkout-owned fixture database. It rejects application/test database names and cached application configuration. It does not connect to a remote database or consume the application queue. Its shared database cache, signing keys, accounts and credentials are synthetic.
+
+After approving fixture creation and synthetic retention deletion, run with the project's Herd PHP:
+
+```powershell
+$runIdentity = [Guid]::NewGuid().ToString('N').Substring(0, 12)
+herd php tests/Concurrency/PostgresRetentionConcurrencyTest.php --provision-local "--run-id=$runIdentity"
+```
+
+A full run first checks the original 46-scenario issuance/lifecycle/rollback matrix, then runs 24 retention races, ten controls and sanitized query-plan measurements. Twenty-two cases require observed PostgreSQL blocking; two prune-first session/reset cases are ordered autocommit outcomes. A missing case, failed invariant or absent required wait is a failure. Query-plan evidence covers only its bounded synthetic distributions, not production-scale guarantees.
+
+`--run-existing --run-id=<same-id>` accepts only that exact ownership-marked fixture. `--case=R01-prune-first` or another manifest case creates explicitly partial evidence; `--case=plans` measures plans only. `--setup-only` prepares the fixture without claiming test success. No credentials belong in arguments or reports. Generated safe reports under ignored `storage/app/pgsql-retention-*` and the fixture database remain for review; cleanup is never automatic. This test runner does not activate production retention or authorize cleanup of existing application data.
+
+### Fixture-only index experiment
+
+For the specifically approved retained fixture `a701b92e031f`, `tests/Concurrency/PostgresRetentionIndexTest.php --run-existing --run-id=a701b92e031f` measures existing queries without bulk seeding or pruning. Adding `--execute` creates at most two named experimental indexes and requires fixture-DDL approval. It refuses another run identity or replacing existing candidate names, preserves application-row snapshots, and retains indexes/reports. This research runner is not a production migration or deployment tool.
+
+### Application retention index
+
+The development baseline has11migration files. User/account additions are folded into users creation; OAuth additions and the nonunique `(auth_code_id, client_id, user_id, expires_at) INCLUDE (id)` covering index are folded into their create-table files. Existing column/default/constraint/index definitions are preserved. Access-token creation uses ordinary transactional DDL with five-second lock and30-second statement bounds. No refresh index or retention activation is included.
+
+This is a development baseline rewrite, not an upgrade migration for previously migrated databases. On 2026-11-02 the existing local database history was reconciled to all 11 source files in baseline batch 1 after a verified encrypted backup; application rows/schema were preserved and no migrations are pending. Other databases require their own reviewed reconciliation plan. Baseline rollback drops tables; the old standalone-index rollback no longer applies. Do not rerun the one-time local reconciliation helper or use rollback/reset as routine cleanup.
+
+The opt-in `tests/Concurrency/PostgresRetentionMigrationTest.php --provision-local --run-id=<fresh-12-hex-id>` now compares a fresh owned schema against the locally captured pre-consolidation catalog and verifies rollback/reapply only while all application tables are empty. It requires that ignored original snapshot, refuses an existing database and retains fixture/report. Normal Unit/Feature tests do not need the snapshot. No application-database reset, remote rollout or automatic cleanup is authorized by this verifier.
+
 ## Requirements
 
 - PHP 8.3+ and Composer 2 (Windows: Laravel Herd).

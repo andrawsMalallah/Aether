@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -34,6 +35,22 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 
     /** @var list<string> */
     protected $hidden = ['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'];
+
+    public function resolveRouteBinding(mixed $value, mixed $field = null): ?Model
+    {
+        // Model binding also runs with cached routes; digit-only URI constraints do not bound bigint values.
+        if (($field ?? $this->getRouteKeyName()) === $this->getKeyName()) {
+            if (! is_string($value) && ! is_int($value)) {
+                return null;
+            }
+            $value = ltrim((string) $value, '0');
+            if (! ctype_digit($value) || filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                return null;
+            }
+        }
+
+        return parent::resolveRouteBinding($value, $field);
+    }
 
     public function sendEmailVerificationNotification(): void
     {
