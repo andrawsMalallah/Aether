@@ -12,7 +12,7 @@ class ReadAetherStats extends Command
 {
     protected $signature = 'aether:stats';
 
-    protected $description = 'Read an approved Waraq notes total and revoke the temporary token';
+    protected $description = 'Read a count from an approved API and revoke the temporary token';
 
     public function handle(): int
     {
@@ -38,7 +38,7 @@ class ReadAetherStats extends Command
         }
 
         try {
-            $notes = $this->readNotes($issuer, $resourceUrl, $clientId, $clientSecret);
+            $count = $this->readCount($issuer, $resourceUrl, $clientId, $clientSecret);
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 
@@ -46,12 +46,12 @@ class ReadAetherStats extends Command
         }
 
         // No resource output until credential cleanup has succeeded.
-        $this->info('Notes: '.$notes.'. Temporary token revoked.');
+        $this->info('Count: '.$count.'. Temporary token revoked.');
 
         return self::SUCCESS;
     }
 
-    private function readNotes(string $issuer, string $resourceUrl, string $clientId, string $clientSecret): int
+    private function readCount(string $issuer, string $resourceUrl, string $clientId, string $clientSecret): int
     {
         $token = null;
         $stage = 'Token request';
@@ -78,12 +78,12 @@ class ReadAetherStats extends Command
             $stage = 'Approved resource request';
             $response = $this->http()->withToken($token)->get($resourceUrl);
             $data = $response->json();
-            if (! $response->successful() || ! is_array($data) || array_keys($data) !== ['notes']
-                || ! is_int($data['notes']) || $data['notes'] < 0) {
+            if (! $response->successful() || ! is_array($data) || array_keys($data) !== ['count']
+                || ! is_int($data['count']) || $data['count'] < 0) {
                 throw new RuntimeException;
             }
 
-            return $data['notes'];
+            return $data['count'];
         } catch (Throwable) {
             // Transport exceptions and upstream bodies can contain credentials.
             throw new RuntimeException($stage.' failed. Check availability, administrator approval and resource access.');

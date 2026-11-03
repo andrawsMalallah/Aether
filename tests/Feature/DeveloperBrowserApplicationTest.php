@@ -38,10 +38,10 @@ it('registers an owned testing public client without secrets or privileged capab
     expect(session('developer.credentials.'.$client->id))->toBeNull();
     $this->withSession(['developer.credentials.'.$client->id => 'invalid-stale-handoff'])
         ->get(route('developer.apps.show', $client))->assertOk()->assertHeader('Cache-Control', 'no-store, private')
-        ->assertSee('No client secret is issued')->assertSee('This public client has no secret')
-        ->assertSee('code_challenge_method=S256')->assertSee('Origin configuration is managed separately.')
+        ->assertSee('No client secret is issued')->assertSee('It has no client secret; never add one.')
+        ->assertSee('code_challenge_method=S256')->assertSee('Saving a callback or choosing Go live does not enable cross-origin requests.')
         ->assertSee('Keep access, ID and refresh tokens in memory')->assertDontSee('Regenerate secret')
-        ->assertDontSee('Save your client secret now.')->assertDontSee('invalid-stale-handoff')->assertDontSee('Store retained tokens encrypted on your server.');
+        ->assertDontSee('Save your client secret now.')->assertDontSee('invalid-stale-handoff')->assertDontSee('Store any retained tokens encrypted on your server.');
     $this->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get(route('developer.apps.secret.confirm', $client))->assertForbidden();
     $this->post(route('developer.apps.secret.store', $client), ['confirm' => true])->assertForbidden();

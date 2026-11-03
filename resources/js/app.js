@@ -1,6 +1,6 @@
 import '../css/app.css';
 
-import.meta.glob(['../images/*.svg'], { eager: true, query: '?url', import: 'default' });
+import.meta.glob(['../images/favicon.svg'], { eager: true, query: '?url', import: 'default' });
 
 function restoreForms() {
     document.querySelectorAll('[data-submit-form]').forEach((form) => {

@@ -42,7 +42,7 @@ it('registers an owned testing secretless mobile client with native guidance and
     $this->withSession(['developer.credentials.'.$client->id => 'invalid-old-secret'])
         ->get(route('developer.apps.show', $client))->assertOk()->assertHeader('Cache-Control', 'no-store, private')
         ->assertSee('Connect your Mobile application')->assertSee('No client secret is issued')->assertSee('code_challenge_method=S256')
-        ->assertSee('system browser')->assertSee('secure credential storage')->assertSee('does not verify or configure your platform association')
+        ->assertSee('system browser')->assertSee('secure credential storage')->assertSee('Aether does not configure or verify that association.')
         ->assertDontSee('Regenerate secret')->assertDontSee('invalid-old-secret')->assertDontSee('Before browser integration')
         ->assertDontSee('Keep access, ID and refresh tokens in memory, not localStorage');
     expect(session('developer.credentials.'.$client->id))->toBeNull();

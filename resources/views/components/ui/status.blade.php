@@ -1,5 +1,5 @@
 @if(session('status'))
-    <p class="notice" role="status">{{ session('status') === 'verification-link-sent' ? 'A new verification link has been sent to your email address.' : session('status') }}</p>
+    <p class="notice notice--success" role="status">{{ session('status') === 'verification-link-sent' ? 'A new verification link has been sent to your email address.' : session('status') }}</p>
 @endif
 @if($errors->any())
     <div class="notice notice--error" role="alert">

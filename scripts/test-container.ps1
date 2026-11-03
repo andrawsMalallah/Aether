@@ -108,6 +108,7 @@ for ($attempt = 0; $attempt -lt 40; $attempt++) {
 }
 if (-not $webReady) { throw 'Container web readiness failed.' }
 Invoke-Docker exec "$runName-web" sh -c 'test ! -e .env && test ! -e storage/oauth-private.key && test ! -e vendor/pestphp && test ! -e node_modules && test ! -w app && test ! -w public && test ! -w vendor && test -w bootstrap/cache && test -w storage/framework/views'
+Invoke-Docker exec "$runName-web" php /container-fixtures/fixture.php integration-guides
 foreach ($path in @('/login', '/.well-known/openid-configuration', '/.well-known/jwks.json')) {
     $response = Invoke-WebRequest "$url$path" -UseBasicParsing -TimeoutSec 4
     if ($response.StatusCode -ne 200 -or $response.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw 'Public route/header assertion failed.' }

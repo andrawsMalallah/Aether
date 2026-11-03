@@ -63,6 +63,36 @@ it('requires verified own-account access recent password and explicit disconnect
     expect($consent->fresh()->revoked_at)->toBeNull()->and(AuditLog::count())->toBe(0);
 });
 
+it('treats out of range consent route identifiers as missing', function (string $identifier): void {
+    $user = User::factory()->create();
+    $this->actingAs($user)->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/account/connected-apps/'.$identifier.'/disconnect', ['confirm' => true])->assertNotFound();
+    expect(AuditLog::count())->toBe(0);
+})->with([
+    'above bigint maximum' => '9223372036854775808',
+    'very long identifier' => str_repeat('9', 100),
+    'padded overflow' => '0009223372036854775808',
+]);
+
+it('disconnects owned consents at the integer boundary and with leading zeroes', function (bool $boundary, bool $padded): void {
+    $user = User::factory()->create();
+    $consent = connectedAppConsent($user, oauthClientFixture());
+    if ($boundary) {
+        DB::table('consents')->where('id', $consent->id)->update(['id' => '9223372036854775807']);
+        $consent = Consent::findOrFail('9223372036854775807');
+    }
+    $identifier = ($padded ? '000' : '').$consent->id;
+    $this->actingAs($user)->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/account/connected-apps/'.$identifier.'/disconnect', ['confirm' => true])
+        ->assertRedirect(route('account.connected-apps.index'));
+    expect($consent->fresh()->revoked_at)->not->toBeNull();
+})->with([
+    'ordinary' => [false, false],
+    'padded ordinary' => [false, true],
+    'maximum' => [true, false],
+    'padded maximum' => [true, true],
+]);
+
 it('disconnects only the users app credentials while keeping other users and apps working', function (): void {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();

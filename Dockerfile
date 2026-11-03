@@ -63,6 +63,8 @@ COPY config/ config/
 COPY database/ database/
 COPY routes/ routes/
 COPY resources/views/ resources/views/
+# Developer guides read these files at render time, beyond the compiled Vite assets.
+COPY resources/examples/ resources/examples/
 COPY public/ public/
 COPY artisan composer.json composer.lock ./
 COPY docker/apache.conf /etc/apache2/sites-enabled/aether.conf

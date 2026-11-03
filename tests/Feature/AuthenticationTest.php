@@ -18,6 +18,14 @@ it('renders all public account and legal pages', function (string $path): void {
     $this->get($path)->assertOk();
 })->with(['/', '/login', '/register', '/forgot-password', '/terms', '/privacy', '/reset-password/test-token?email=test%40example.com']);
 
+it('renders successful status messages with the success banner style', function (): void {
+    $this->withSession(['status' => 'verification-link-sent'])
+        ->get('/login')
+        ->assertOk()
+        ->assertSee('class="notice notice--success" role="status"', false)
+        ->assertSee('A new verification link has been sent to your email address.');
+});
+
 it('registers an unverified account with Argon2id and sends verification without signing in', function (): void {
     Notification::fake();
     $this->post('/register', [

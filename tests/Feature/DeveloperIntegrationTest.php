@@ -42,10 +42,10 @@ it('keeps integration instructions behind verified owner access and supports bro
         ->get(route('developer.apps.show', $client))->assertForbidden()->assertDontSee('Connect your application');
     $publicClient = oauthClientFixture($owner);
     $this->actingAs($owner)->get(route('developer.apps.show', $publicClient))->assertOk()->assertSee('Connect your application')
-        ->assertSee('This public client has no secret')->assertSee('Origin configuration is managed separately.')
+        ->assertSee('It has no client secret; never add one.')->assertSee('Saving a callback or choosing Go live does not enable cross-origin requests.')
         ->assertSee('Vue Browser example: sign in, refresh and local logout')
         ->assertDontSee('Laravel example: sign in and local logout')
-        ->assertDontSee('Keep your client secret in your server environment');
+        ->assertDontSee('Run the sign-in flow on your server');
 });
 
 it('renders the actual Vue example files as escaped source on Browser details only', function (): void {
@@ -121,3 +121,29 @@ it('shows escaped Machine command source only to its verified developer owner', 
         ->get(route('developer.apps.show', $client))->assertForbidden()
         ->assertDontSee('Laravel Machine example: request, call an API and revoke');
 });
+
+it('uses generic setup guidance for every application type', function (OAuthAppType $type, string $overview): void {
+    $owner = User::factory()->create(['is_developer' => true]);
+    $machine = $type === OAuthAppType::Machine;
+    $client = oauthClientFixture($owner, in_array($type, [OAuthAppType::Web, OAuthAppType::Machine], true));
+    $client->forceFill([
+        'app_type' => $type,
+        'grant_types' => $machine ? ['client_credentials'] : ['authorization_code', 'refresh_token'],
+        'redirect_uris' => $machine ? [] : ['https://your-app.example/auth/callback'],
+        'allowed_scopes' => $machine ? ['stats:read'] : ['openid'],
+    ])->save();
+
+    $response = $this->actingAs($owner)->get(route('developer.apps.show', $client));
+    $response->assertOk()->assertSee($overview)
+        ->assertDontSee('Waraq')->assertDontSee('Pocket')->assertDontSee('Pulse')->assertDontSee('Prism');
+
+    if ($machine) {
+        $response->assertSee('https://api.your-app.example/stats')->assertSee('{"count": 12}', false)
+            ->assertSee('This is a sample response format, not an Aether endpoint.');
+    }
+})->with([
+    'Web' => [OAuthAppType::Web, 'Your app sends people to Aether to sign in.'],
+    'Browser' => [OAuthAppType::Spa, 'Your app sends people to Aether to sign in.'],
+    'Mobile' => [OAuthAppType::Mobile, 'Let people sign in to your native app with their Aether account.'],
+    'Machine' => [OAuthAppType::Machine, 'Use this Machine application when a server or background service needs to call an API without signing in a person.'],
+]);

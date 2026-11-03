@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
     <title>{{ $title }} · Aether</title>
-    <link rel="icon" type="image/svg+xml" href="{{ Vite::asset('resources/images/aether-favicon.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ Vite::asset('resources/images/favicon.svg') }}">
     @vite('resources/js/app.js')
 </head>
 <body>

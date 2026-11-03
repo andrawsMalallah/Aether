@@ -13,6 +13,22 @@ use Illuminate\Support\Carbon;
  */
 class Consent extends Model
 {
+    public function resolveRouteBinding(mixed $value, mixed $field = null): ?Model
+    {
+        // A digit-only route constraint does not bound PostgreSQL bigint input.
+        if (($field ?? $this->getRouteKeyName()) === $this->getKeyName()) {
+            if (! is_string($value) && ! is_int($value)) {
+                return null;
+            }
+            $value = ltrim((string) $value, '0');
+            if (! ctype_digit($value) || filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                return null;
+            }
+        }
+
+        return parent::resolveRouteBinding($value, $field);
+    }
+
     /** @return BelongsTo<OAuthClient, $this> */
     public function client(): BelongsTo
     {

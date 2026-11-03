@@ -51,6 +51,23 @@ try {
     }
 
     switch ($argv[1] ?? '') {
+        case 'integration-guides':
+            $browserGuide = view('developer.vue-example')->render();
+            $machineGuide = view('developer.machine-example')->render();
+            foreach (['auth.js', 'App.vue', 'example.css'] as $filename) {
+                $source = file_get_contents(resource_path('examples/browser/'.$filename));
+                if ($source === false || $source === '' || ! str_contains($browserGuide, e($source))) {
+                    throw new RuntimeException('Browser integration guide is incomplete.');
+                }
+            }
+            foreach (['aether-machine.php', 'ReadAetherStats.php'] as $filename) {
+                $source = file_get_contents(resource_path('examples/machine/'.$filename));
+                if ($source === false || $source === '' || ! str_contains($machineGuide, e($source))) {
+                    throw new RuntimeException('Machine integration guide is incomplete.');
+                }
+            }
+            echo "Browser and Machine integration guides rendered with complete examples.\n";
+            break;
         case 'produce':
             $user = new User;
             $user->forceFill(['name' => 'Container fixture', 'email' => 'container@example.com',

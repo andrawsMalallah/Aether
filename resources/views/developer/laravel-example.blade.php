@@ -1,12 +1,14 @@
 <details>
     <summary>Laravel example: sign in and local logout</summary>
-    <p>This Laravel 13 / PHP 8.3 example runs in a separate client app. It uses the same Socialite OIDC driver as Waraq, with a small, fifteen-minute server session instead of a user database. It does not log into an existing Laravel user guard or implement refresh. For a full application, map the validated issuer and subject to a local account and authorize its resources separately; never link an existing account by email alone.</p>
+    <p>Use this optional example to try Aether sign-in in your own Laravel 13 / PHP 8.3 app. It uses Socialite and an OpenID Connect driver to check the sign-in response, then keeps the validated identity in a server session for fifteen minutes.</p>
+    <p>This example does not create local users, sign them into Laravel's auth guard or refresh tokens. In a full app, connect the validated issuer and subject to a local user, then apply your normal access rules. Do not link accounts by email alone.</p>
     <h3>1. Prepare your client app</h3>
-    <p>In your own Laravel project, install these dependencies. These commands do not belong in the Aether provider project.</p>
+    <p>Run these commands in your app's project folder, not in Aether:</p>
     <pre class="developer-urls"><code>composer require "laravel/socialite:^5.31" "socialiteproviders/openidconnect:^1.0.1"
 composer audit</code></pre>
-    <p>Register a Web application with the exact callback <code>https://your-app.example/auth/aether/callback</code>, replacing the hostname with your own HTTPS client domain. Select <code>openid</code>; profile and email are optional. During Testing, sign in with the verified account that owns this application. Keep TLS verification enabled; for Herd certificates, configure a trusted CA bundle in PHP rather than disabling verification.</p>
-    <p>Set the following values in the client app's environment. Copy the issuer and client ID from the settings above and supply your one-time secret privately. Never commit this file. Use a server-side session and a durable asynchronous queue with its tables/backend configured; do not use cookie sessions or the sync queue. Run the client's normal approved migrations if its session/queue backend needs them.</p>
+    <p>Replace <code>your-app.example</code> with your HTTPS domain. Save <code>https://your-app.example/auth/aether/callback</code> as a callback on this Web application and enable <code>openid</code>. Add <code>profile</code> or <code>email</code> only if you need them. While the app is Testing, use its verified owner account.</p>
+    <p>Copy the settings below into your app's private environment file. Use the issuer and client ID shown above, plus the secret you saved when registering the app. Keep that file out of source control.</p>
+    <p>This example needs server-side sessions and a background queue for token cleanup. Configure the database tables or other storage those services need using your app's normal setup. Do not use cookie sessions or the sync queue. Keep HTTPS certificate checks enabled; trust your local development certificate in PHP rather than disabling verification.</p>
     <pre class="developer-urls"><code>AETHER_ISSUER=&lt;issuer from this page&gt;
 AETHER_CLIENT_ID=&lt;client ID from this page&gt;
 AETHER_CLIENT_SECRET=&lt;your private client secret&gt;
@@ -15,7 +17,7 @@ SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
 QUEUE_CONNECTION=database</code></pre>
-    <p>Create <code>config/oidc.php</code>. The package automatically registers <code>oidc_aether</code>; no manual Socialite event listener is needed. Request only scopes enabled for this app.</p>
+    <p>Create <code>config/oidc.php</code> with the following settings. The package registers the <code>oidc_aether</code> driver automatically. Keep its requested scopes within the permissions enabled for your app.</p>
     @php
         $configurationExample = <<<'PHP'
 <?php
@@ -35,8 +37,8 @@ return ['connections' => ['aether' => [
 PHP;
     @endphp
     <pre class="developer-urls"><code>{{ $configurationExample }}</code></pre>
-    <h3>2. Validate the callback without flashing credentials</h3>
-    <p>Create <code>app/Http/Requests/AetherExampleCallbackRequest.php</code>. A malformed callback returns a generic error without saving its code or state as old form input.</p>
+    <h3>2. Check the return from Aether</h3>
+    <p>Create <code>app/Http/Requests/AetherExampleCallbackRequest.php</code>. This checks the callback fields and shows a safe error if they are invalid. It does not save the sign-in code or state as old form input.</p>
     @php
         $requestExample = <<<'PHP'
 <?php
@@ -74,8 +76,9 @@ class AetherExampleCallbackRequest extends FormRequest
 PHP;
     @endphp
     <pre class="developer-urls"><code>{{ $requestExample }}</code></pre>
-    <h3>3. Revoke unused credentials in an encrypted job</h3>
-    <p>Create <code>app/Jobs/RevokeAetherExampleToken.php</code>. This sign-in-only example queues revocation immediately after identity validation, so it does not retain access or refresh tokens in the session. Aether revokes the associated refresh token with the access token. Keep queue payloads encrypted and exclude HTTP credentials, callback queries and job arguments from logging and monitoring. Monitor failed jobs and retry cleanup after fixing service connectivity.</p>
+    <h3>3. Clean up tokens in the background</h3>
+    <p>Create <code>app/Jobs/RevokeAetherExampleToken.php</code>. This example only needs the user's identity, so it queues token revocation after validating sign-in. Aether also revokes the refresh token associated with that access token; neither is kept in the session.</p>
+    <p>The job is encrypted because it carries credentials. Keep credentials, callback queries and job arguments out of logs and monitoring. Check failed jobs and retry cleanup after fixing any connection problem.</p>
     @php
         $jobExample = <<<'PHP'
 <?php
@@ -123,7 +126,7 @@ PHP;
     @endphp
     <pre class="developer-urls"><code>{{ $jobExample }}</code></pre>
     <h3>4. Add the controller and routes</h3>
-    <p>Create <code>app/Http/Controllers/AetherExampleController.php</code>. Keep the stateful library defaults: do not call <code>stateless()</code> or disable PKCE, nonce or JWT verification. Only the validated identity is saved; email is never used as an account key.</p>
+    <p>Create <code>app/Http/Controllers/AetherExampleController.php</code>. It starts sign-in, handles the callback and saves only the validated identity. Keep the library's session, PKCE, nonce and token-signature checks enabled; do not use <code>stateless()</code>.</p>
     @php
         $controllerExample = <<<'PHP'
 <?php
@@ -254,7 +257,8 @@ BLADE;
     <p>After configuring the client, clear its cached configuration and start its queue worker in a separate terminal.</p>
     <pre class="developer-urls"><code>php artisan config:clear
 php artisan queue:work --tries=5 --timeout=30</code></pre>
-    <p>Open <code>https://your-app.example/aether-example</code>. Check sign-in, Deny and Allow consent, a callback reload (the code must not be reusable), and local sign-out. After fifteen minutes the demo asks for sign-in again. Aether stays signed in, so a returning sign-in can reuse its session. Cleanup revokes issued credentials independently of this short local session; suspension does not automatically terminate a client-local session.</p>
-    <p>This is a standalone identity demonstration. Do not use its session key as authorization for existing application routes. For persistent users, use a unique issuer/subject mapping, the normal Laravel auth guard and resource policies. For retained API access, add encrypted per-session credentials, coordinated refresh rotation and queued logout revocation as separate application features.</p>
+    <p>Open <code>https://your-app.example/aether-example</code>. Try sign-in, deny permission and retry, allow permission, then sign out. Reloading a callback must not reuse its code. The example asks for sign-in again after fifteen minutes.</p>
+    <p>Signing out ends this app's session. Aether stays signed in, so the next sign-in may not ask for a password. Token cleanup runs separately; suspending the app does not automatically end a local session it already created.</p>
+    <p>Before using this in a full app, add a unique issuer/subject user mapping, Laravel's normal auth guard and resource policies. The example's session key alone must not grant access to existing routes. If you need ongoing API access, add encrypted token storage, coordinated refreshes and queued revocation on logout.</p>
     <p>Package reference: <a href="https://socialiteproviders.com/OpenIDConnect/">Socialite OpenID Connect</a>. Queue reference: <a href="https://laravel.com/docs/13.x/queues#encrypted-jobs">Laravel encrypted jobs</a>.</p>
 </details>
